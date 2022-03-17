@@ -344,6 +344,7 @@ namespace Damage_Calculator
                     var spawn = new PlayerSpawn();
                     spawn.Origin = this.stringToVector3(entityRootVdf["origin"]?.Value) ?? Vector3.Empty;
                     spawn.Angles = this.stringToVector3(entityRootVdf["angles"]?.Value) ?? Vector3.Empty;
+                    spawn.Team = ePlayerTeam.CounterTerrorist; // Just for the colour
 
                     // Count all hostage spawns
                     map.AmountHostages++;
@@ -553,11 +554,14 @@ namespace Damage_Calculator
 
         private void positionSpawns()
         {
-            double size = this.getPixelsFromUnits(70);
+            double size = this.getPixelsFromUnits(75);
             foreach (var spawn in this.loadedMap.SpawnPoints)
             {
-                if (!spawn.IsPriority && mnuAllowNonPrioritySpawns.IsChecked == false)
-                    continue;
+                if (spawn.Type != eSpawnType.Hostage)
+                {
+                    if (mnuAllowNonPrioritySpawns.IsChecked == false && (!spawn.IsPriority || (spawn.Team == ePlayerTeam.Terrorist && !this.loadedMap.HasPrioritySpawnsT) || (spawn.Team == ePlayerTeam.CounterTerrorist && !this.loadedMap.HasPrioritySpawnsCT)))
+                        continue;
+                }
 
                 if (spawn.Type == eSpawnType.Standard && mnuShowStandardSpawns.IsChecked == false)
                     continue;

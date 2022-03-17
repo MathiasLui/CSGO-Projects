@@ -13,6 +13,8 @@ namespace Damage_Calculator
         private Point start;
         private bool isSpacebarPressed = false;
 
+        public bool IsZoomed { get; set; }
+
         private TranslateTransform GetTranslateTransform(UIElement element)
         {
             return (TranslateTransform)((TransformGroup)element.RenderTransform)
@@ -102,7 +104,10 @@ namespace Damage_Calculator
 
                 double zoom = e.Delta > 0 ? .2 : -.2;
                 if (!(e.Delta > 0) && (st.ScaleX < 1 || st.ScaleY < 1))
+                {
+                    this.IsZoomed = false;
                     return;
+                }
 
                 Point relative = e.GetPosition(child);
                 double absoluteX;
@@ -116,6 +121,8 @@ namespace Damage_Calculator
 
                 tt.X = absoluteX - relative.X * st.ScaleX;
                 tt.Y = absoluteY - relative.Y * st.ScaleY;
+
+                this.IsZoomed = true;
             }
         }
 

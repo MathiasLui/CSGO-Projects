@@ -1022,6 +1022,18 @@ namespace Damage_Calculator
             this.rightZoomBorder.KeyUp(sender, e);
         }
         #endregion
+
+        private void rightZoomBorder_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if(rightZoomBorder.Width < rightZoomBorder.Height)
+            {
+                rightZoomBorder.Height = rightZoomBorder.ActualWidth;
+            }
+            if (rightZoomBorder.IsZoomed)
+            {
+                rightZoomBorder.Reset();
+            }
+        }
     }
 
     enum eDrawMode { Shooting, Bomb }

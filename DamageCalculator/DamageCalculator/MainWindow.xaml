@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Damage_Calculator"
         mc:Ignorable="d"
-        Title="CS:GO Damage Calculator" Height="566" Width="826" MinHeight="700" MinWidth="700"
+        Title="CS:GO Damage Calculator" Height="566" Width="877" MinHeight="700" MinWidth="700"
         Style="{DynamicResource CustomWindowStyle}"
         WindowStartupLocation="CenterScreen" Icon="27.ico"
         WindowState="Maximized"
@@ -119,7 +119,7 @@
                     </StackPanel>
                 </StackPanel>
             </GroupBox>
-            <local:ZoomBorder x:Name="rightZoomBorder" Grid.Row="1" Grid.Column="1" Margin="10" ClipToBounds="True">
+            <local:ZoomBorder x:Name="rightZoomBorder" Grid.Row="1" Grid.Column="1" Margin="10" ClipToBounds="True" SizeChanged="rightZoomBorder_SizeChanged">
                 <Grid>
                     <Image x:Name="mapImage" MouseLeftButtonUp="mapImage_MouseLeftButtonUp" HorizontalAlignment="Center" VerticalAlignment="Center" MouseRightButtonUp="mapImage_MouseRightButtonUp" LayoutUpdated="mapImage_LayoutUpdated" />
                     <Canvas x:Name="pointsCanvas" Width="{Binding ActualWidth, ElementName=mapImage, Mode=OneWay}" Height="{Binding ActualHeight, ElementName=mapImage, Mode=OneWay}" />

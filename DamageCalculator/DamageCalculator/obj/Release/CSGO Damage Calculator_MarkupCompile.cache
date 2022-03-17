@@ -4,17 +4,17 @@
 winexe
 C#
 .cs
-D:\source\repos\_Git Repos\ConfigManager\Config Manager\Config Manager\obj\Release\
-Config_Manager
+D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\obj\Release\
+Damage_Calculator
 none
 false
 TRACE
-D:\source\repos\_Git Repos\ConfigManager\Config Manager\Config Manager\App.xaml
-6-2134167639
+D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\App.xaml
+8-1784528412
 
-25-862544125
-15-2024074300
-About.xaml;MainWindow.xaml;Themes\ColourfulDarkTheme.xaml;Themes\ColourfulLightTheme.xaml;Themes\DarkTheme.xaml;Themes\LightTheme.xaml;
+31-767171675
+15-431277860
+About.xaml;ctrlPlayerSpawn.xaml;Help.xaml;MainWindow.xaml;Themes\ColourfulDarkTheme.xaml;Themes\ColourfulLightTheme.xaml;Themes\DarkTheme.xaml;Themes\LightTheme.xaml;
 
 False
 

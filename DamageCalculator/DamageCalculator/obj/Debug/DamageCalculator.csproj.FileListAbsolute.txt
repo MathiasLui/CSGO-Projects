@@ -54,3 +54,4 @@ D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\ob
 D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\obj\Debug\ctrlPlayerSpawn.baml
 D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\obj\Debug\Help.g.cs
 D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\obj\Debug\Help.baml
+D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\obj\Debug\GeneratedInternalTypeHelper.g.cs

@@ -986,6 +986,15 @@ namespace Damage_Calculator
             {
                 Clipboard.SetText(txtCursorX.Text + " " + txtCursorY.Text);
             }
+
+            // Pass it on for spacebar pan start
+            this.rightZoomBorder.KeyDown(sender, e);
+        }
+
+        private void Window_KeyUp(object sender, KeyEventArgs e)
+        {
+            // Pass it on for spacebar pan stop
+            this.rightZoomBorder.KeyUp(sender, e);
         }
         #endregion
     }

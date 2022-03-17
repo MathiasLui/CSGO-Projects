@@ -94,6 +94,7 @@
     <Compile Include="ZatVdfParser\BackupVdfReader.cs" />
     <Compile Include="ZatVdfParser\Element.cs" />
     <Compile Include="ZatVdfParser\VdfFile.cs" />
+    <Compile Include="ZoomBorder.cs" />
     <Page Include="About.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

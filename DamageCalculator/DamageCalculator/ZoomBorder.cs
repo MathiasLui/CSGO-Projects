@@ -78,13 +78,19 @@ namespace Damage_Calculator
         public void KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Space)
+            {
                 this.isSpacebarPressed = true;
+                this.Cursor = Cursors.SizeAll;
+            }
         }
 
         public void KeyUp(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Space)
+            {
                 this.isSpacebarPressed = false;
+                this.Cursor = null;
+            }
         }
 
         private void child_MouseWheel(object sender, MouseWheelEventArgs e)

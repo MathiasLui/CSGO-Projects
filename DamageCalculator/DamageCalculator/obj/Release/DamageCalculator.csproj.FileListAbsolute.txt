@@ -29,3 +29,4 @@ D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\ob
 D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\obj\Release\DamageCalculator.csproj.CoreCompileInputs.cache
 D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\obj\Release\CSGO Damage Calculator.exe
 D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\obj\Release\CSGO Damage Calculator.pdb
+D:\source\repos\_Git Repos\DamageCalculator\DamageCalculator\DamageCalculator\obj\Release\GeneratedInternalTypeHelper.g.cs

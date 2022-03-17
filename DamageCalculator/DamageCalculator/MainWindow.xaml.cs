@@ -227,6 +227,7 @@ namespace Damage_Calculator
             this.chkHasNavFile.IsChecked = map.NavFilePath != null;
 
             this.resetCanvas();
+            this.rightZoomBorder.Reset();
 
             if (map.MapType == CsgoMap.eMapType.Defusal)
             {

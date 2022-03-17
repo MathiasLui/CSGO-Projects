@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Damage_Calculator"
         mc:Ignorable="d"
-        Title="CS:GO Damage Calculator" Height="566" Width="826" MinHeight="560" MinWidth="450"
+        Title="CS:GO Damage Calculator" Height="566" Width="826" MinHeight="560" MinWidth="690"
         Style="{DynamicResource CustomWindowStyle}"
         WindowStartupLocation="CenterScreen" Icon="27.ico"
         MouseMove="Window_MouseMove"
@@ -24,45 +24,53 @@
         </Menu>
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="65" />
+                <RowDefinition Height="80" />
                 <RowDefinition />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="150" />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Grid.Column="1" Margin="0,0,0,5">
+                <TextBlock FontWeight="Bold" Text="Mode:" />
+                <RadioButton x:Name="radioModeShooting" Content="Shooting" IsChecked="True" Checked="radioModeShooting_Checked" />
+                <RadioButton x:Name="radioModeBomb" Content="Bomb" Checked="radioModeBomb_Checked"/>
+            </StackPanel>
             <StackPanel x:Name="topStackPanel" Orientation="Horizontal" HorizontalAlignment="Center" Grid.ColumnSpan="2" VerticalAlignment="Center">
                 <TextBlock Text="Map:" VerticalAlignment="Center" FontWeight="Bold" />
                 <ComboBox x:Name="comboBoxMaps" Margin="10,0,0,0" Height="25" Width="200" VerticalAlignment="Top" SelectionChanged="comboBoxMaps_SelectionChanged" />
             </StackPanel>
-            <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Right" Grid.Column="1" Margin="0,0,10,0">
-                <TextBlock FontWeight="Bold" Text="Distance:" />
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="txtEasterEggMetres" Text="Metres:"  />
-                    <TextBlock x:Name="textDistanceMetres" Text="0" Margin="10,0,0,0" Foreground="IndianRed" />
+            <StackPanel Margin="0,0,10,5" VerticalAlignment="Bottom" HorizontalAlignment="Right" Grid.Column="1">
+                    <TextBlock FontWeight="Bold" Text="Distance:" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="txtEasterEggMetres" Text="Metres:"  />
+                        <TextBlock x:Name="textDistanceMetres" Text="0" Margin="10,0,0,0" Foreground="IndianRed" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Inches/Units:" />
+                        <TextBlock x:Name="textDistanceUnits" Text="0" Margin="10,0,0,0" Foreground="IndianRed" />
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Inches/Units:" />
-                    <TextBlock x:Name="textDistanceUnits" Text="0" Margin="10,0,0,0" Foreground="IndianRed" />
-                </StackPanel>
-            </StackPanel>
-            <Rectangle x:Name="rectTop" VerticalAlignment="Top" Grid.Row="1" Height="1" Fill="White" Grid.ColumnSpan="2" />
+                <Rectangle x:Name="rectTop" VerticalAlignment="Top" Grid.Row="1" Height="1" Fill="White" Grid.ColumnSpan="2" />
             <Rectangle x:Name="rectSide" HorizontalAlignment="Left" Width="1" Grid.Row="1" Grid.Column="1" Fill="White" />
             <StackPanel x:Name="leftStackPanel" Margin="10,20,0,0" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Stretch">
                 <StackPanel>
                     <StackPanel>
                         <TextBlock Text="Armor:" FontSize="14" FontWeight="Bold" />
-                        <CheckBox x:Name="chkHelmet" Content="Helmet" Checked="settings_Updated" Unchecked="settings_Updated" />
-                        <CheckBox x:Name="chkKevlar" Content="Body armor" Checked="settings_Updated" Unchecked="settings_Updated" />
+                        <StackPanel x:Name="stackArmorSeparated">
+                            <CheckBox x:Name="chkHelmet" Content="Helmet" Checked="settings_Updated" Unchecked="settings_Updated" />
+                            <CheckBox x:Name="chkKevlar" Content="Body armor" Checked="settings_Updated" Unchecked="settings_Updated" />
+                        </StackPanel>
+                        <CheckBox x:Name="chkArmorAny" Visibility="Collapsed" Content="Yes" Checked="settings_Updated" Unchecked="settings_Updated" />
                     </StackPanel>
-                    <StackPanel Margin="0,20,0,0">
+                    <StackPanel x:Name="stackAreaHit" Margin="0,20,0,0">
                         <TextBlock Text="Area hit:" FontSize="14" FontWeight="Bold" />
                         <RadioButton x:Name="radioHead" Content="Head" Checked="settings_Updated" />
                         <RadioButton x:Name="radioChestArms" Content="Chest/Arms" IsChecked="True" Checked="settings_Updated" />
                         <RadioButton x:Name="radioStomach" Content="Stomach" Checked="settings_Updated" />
                         <RadioButton x:Name="radioLegs" Content="Legs" Checked="settings_Updated" />
                     </StackPanel>
-                    <StackPanel Margin="0,20,0,0">
+                    <StackPanel x:Name="stackWeaponUsed" Margin="0,20,0,0">
                         <TextBlock Text="Weapon used:" FontSize="14" FontWeight="Bold" />
                         <ComboBox x:Name="comboWeapons" MinWidth="100" MaxWidth="200" HorizontalAlignment="Left" SelectionChanged="comboWeapons_SelectionChanged" />
                     </StackPanel>

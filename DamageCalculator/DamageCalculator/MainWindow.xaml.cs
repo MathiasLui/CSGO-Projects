@@ -39,6 +39,11 @@ namespace Damage_Calculator
 
         private Line connectingLine = new Line();
 
+        private MapPoint bombCircle = new MapPoint();
+
+        private eDrawMode DrawMode = eDrawMode.Shooting;
+
+        // Extra icons
         private Image CTSpawnIcon;
         private Image TSpawnIcon;
         private Image ASiteIcon;
@@ -49,7 +54,7 @@ namespace Damage_Calculator
         /// <summary>
         /// Gets or sets the currently loaded map.
         /// </summary>
-        private CsgoMapOverview loadedMap;
+        private CsgoMap loadedMap;
         private CsgoWeapon selectedWeapon;
 
         private BackgroundWorker bgWorker = new BackgroundWorker();
@@ -84,7 +89,7 @@ namespace Damage_Calculator
                 // Add maps
                 var maps = new List<ComboBoxItem>();
 
-                foreach (var map in e.UserState as List<CsgoMapOverview>)
+                foreach (var map in e.UserState as List<CsgoMap>)
                 {
                     var item = new ComboBoxItem();
 
@@ -191,27 +196,90 @@ namespace Damage_Calculator
 
         private void resetCanvas()
         {
-            this.pointsCanvas.Children.Clear();
-            this.leftPoint = null;
-            this.rightPoint = null;
-            this.connectingLine = null;
-            this.unitsDistance = -1;
-            this.textDistanceMetres.Text = "0";
-            this.textDistanceUnits.Text = "0";
-            this.txtResult.Text = "0";
-            this.txtResultArmor.Text = "0";
+            if (this.IsInitialized)
+            {
+                this.pointsCanvas.Children.Clear();
+                this.leftPoint = null;
+                this.rightPoint = null;
+                this.connectingLine = null;
+                this.bombCircle = null;
+                this.unitsDistance = -1;
+                this.textDistanceMetres.Text = "0";
+                this.textDistanceUnits.Text = "0";
+                this.txtResult.Text = "0";
+                this.txtResultArmor.Text = "0";
+            }
         }
 
-        private void loadMap(CsgoMapOverview map)
+        private void loadMap(CsgoMap map)
         {
             mapImage.Source = map.MapImage;
+
+            if (map.BspFilePath != null)
+            {
+                // Map radar has an actual existing BSP map file
+                map.EntityList = Globals.Settings.CsgoHelper.ReadEntityListFromBsp(map.BspFilePath);
+
+                // Separate all entities, which removes curly braces from the start or end of entities
+                string[] entities = map.EntityList.Split(new string[] { "}\n{" }, StringSplitOptions.None);
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    // Add start or end curly brace back, if nonexistent
+                    if (!entities[i].StartsWith("{"))
+                        entities[i] = "{" + entities[i];
+                    else if (!entities[i].EndsWith("}"))
+                        entities[i] += "}";
+
+                    // Add a generic name for the object, to fool it into complying with normal VDF standards
+                    entities[i] = "\"entity\"\n" + entities[i];
+
+                    VDFFile vdf = new VDFFile(entities[i], parseTextDirectly: true);
+                    var elementRootVdf = vdf["entity"];
+                    if(elementRootVdf["classname"].Value == "info_map_parameters")
+                    {
+                        string bombRadius = elementRootVdf["bombradius"]?.Value;
+                        if (bombRadius != null)
+                        {
+                            // Custom bomb radius
+                            if (float.TryParse(bombRadius, out float bombRad) && bombRad >= 0)
+                            {
+                                // bombradius is valid and not negative
+                                map.BombDamage = bombRad;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            this.resetCanvas();
+
+            if (map.MapType == CsgoMap.eMapType.Defusal)
+            {
+                this.radioModeBomb.IsEnabled = true;
+            }
+            else
+            {
+                this.radioModeBomb.IsEnabled = false;
+                // Select the only other working one in that case
+                this.radioModeShooting.IsChecked = true;
+            }
+
+            this.loadedMap = map;
+        }
+
+        private double getPixelsFromUnits(double units)
+        {
+            int mapSizePixels = (this.mapImage.Source as BitmapSource).PixelWidth;
+            double mapSizeUnits = mapSizePixels * this.loadedMap.MapSizeMultiplier;
+            return units * this.pointsCanvas.ActualWidth / mapSizeUnits;
         }
 
         private Ellipse getPointEllipse(Color strokeColour)
         {
             Ellipse circle = new Ellipse();
             circle.Fill = null;
-            circle.Width = circle.Height = 14;
+            circle.Width = circle.Height = this.getPixelsFromUnits(150);
             circle.Stroke = new SolidColorBrush(strokeColour);
             circle.StrokeThickness = 2;
             circle.IsHitTestVisible = false;
@@ -219,29 +287,65 @@ namespace Damage_Calculator
             return circle;
         }
 
+        private Ellipse getBombEllipse(Color strokeColour)
+        {
+            Ellipse circle = new Ellipse();
+
+            Color fillColour = strokeColour;
+            fillColour.A = 50;
+
+            circle.Fill = new SolidColorBrush(fillColour);
+            circle.Width = circle.Height = this.getPixelsFromUnits(loadedMap.BombDamage * 3.5 * 2); // * 2 cause radius to width
+            circle.Stroke = new SolidColorBrush(strokeColour);
+            circle.StrokeThickness = 3;
+            circle.IsHitTestVisible = false;
+
+            return circle;
+        }
+
         private void updateCirclePositions()
         {
+            // TODO: Update bomb circle size
+
             if (this.connectingLine == null)
                 this.connectingLine = new Line();
 
-            if (leftPoint?.Circle != null)
+            if (this.leftPoint?.Circle != null)
             {
-                Canvas.SetLeft(leftPoint.Circle, (leftPoint.PercentageX * pointsCanvas.ActualWidth / 100f) - (leftPoint.Circle.Width / 2));
-                Canvas.SetTop(leftPoint.Circle, (leftPoint.PercentageY * pointsCanvas.ActualHeight / 100f) - (leftPoint.Circle.Height / 2));
+                Canvas.SetLeft(this.leftPoint.Circle, (this.leftPoint.PercentageX * pointsCanvas.ActualWidth / 100f) - (this.leftPoint.Circle.Width / 2));
+                Canvas.SetTop(this.leftPoint.Circle, (this.leftPoint.PercentageY * pointsCanvas.ActualHeight / 100f) - (this.leftPoint.Circle.Height / 2));
+                this.leftPoint.Circle.Width = this.leftPoint.Circle.Height = this.leftPoint.PercentageScale * this.pointsCanvas.ActualWidth / 100f;
             }
 
-            if (rightPoint?.Circle != null)
+            if (this.rightPoint?.Circle != null)
             {
-                Canvas.SetLeft(rightPoint.Circle, (rightPoint.PercentageX * pointsCanvas.ActualWidth / 100f) - (rightPoint.Circle.Width / 2));
-                Canvas.SetTop(rightPoint.Circle, (rightPoint.PercentageY * pointsCanvas.ActualHeight / 100f) - (rightPoint.Circle.Height / 2));
+                Canvas.SetLeft(this.rightPoint.Circle, (this.rightPoint.PercentageX * pointsCanvas.ActualWidth / 100f) - (this.rightPoint.Circle.Width / 2));
+                Canvas.SetTop(this.rightPoint.Circle, (this.rightPoint.PercentageY * pointsCanvas.ActualHeight / 100f) - (this.rightPoint.Circle.Height / 2));
+                this.rightPoint.Circle.Width = this.rightPoint.Circle.Height = this.rightPoint.PercentageScale * this.pointsCanvas.ActualWidth / 100f;
             }
 
-            if(leftPoint?.Circle != null && rightPoint?.Circle != null)
+            if (this.bombCircle?.Circle != null)
             {
-                this.connectingLine.X1 = Canvas.GetLeft(leftPoint.Circle) + (leftPoint.Circle.Width / 2);
-                this.connectingLine.Y1 = Canvas.GetTop(leftPoint.Circle) + (leftPoint.Circle.Height / 2);
-                this.connectingLine.X2 = Canvas.GetLeft(rightPoint.Circle) + (rightPoint.Circle.Width / 2);
-                this.connectingLine.Y2 = Canvas.GetTop(rightPoint.Circle) + (rightPoint.Circle.Height / 2);
+                Canvas.SetLeft(this.bombCircle.Circle, (this.bombCircle.PercentageX * pointsCanvas.ActualWidth / 100f) - (this.bombCircle.Circle.Width / 2));
+                Canvas.SetTop(this.bombCircle.Circle, (this.bombCircle.PercentageY * pointsCanvas.ActualHeight / 100f) - (this.bombCircle.Circle.Height / 2));
+                this.bombCircle.Circle.Width = this.bombCircle.Circle.Height = this.bombCircle.PercentageScale * this.pointsCanvas.ActualWidth / 100f;
+            }
+
+            if((this.leftPoint?.Circle != null || this.bombCircle?.Circle != null) && this.rightPoint?.Circle != null)
+            {
+                if (this.DrawMode == eDrawMode.Shooting)
+                {
+                    this.connectingLine.X1 = Canvas.GetLeft(this.leftPoint.Circle) + (this.leftPoint.Circle.Width / 2);
+                    this.connectingLine.Y1 = Canvas.GetTop(this.leftPoint.Circle) + (this.leftPoint.Circle.Height / 2);
+                }
+                else
+                {
+                    this.connectingLine.X1 = Canvas.GetLeft(this.bombCircle.Circle) + (this.bombCircle.Circle.Width / 2);
+                    this.connectingLine.Y1 = Canvas.GetTop(this.bombCircle.Circle) + (this.bombCircle.Circle.Height / 2);
+                }
+                this.connectingLine.X2 = Canvas.GetLeft(this.rightPoint.Circle) + (this.rightPoint.Circle.Width / 2);
+                this.connectingLine.Y2 = Canvas.GetTop(this.rightPoint.Circle) + (this.rightPoint.Circle.Height / 2);
+
                 this.connectingLine.Fill = null;
                 this.connectingLine.Stroke = new SolidColorBrush(Color.FromArgb(140, 255, 255, 255));
                 this.connectingLine.StrokeThickness = 2;
@@ -261,91 +365,97 @@ namespace Damage_Calculator
             }
             else
             {
+                // No 2 circles are being drawn that need any connection
                 this.lineDrawn = false;
             }
 
             if(this.loadedMap != null && this.loadedMap.CTSpawnMultiplierX != -1 && this.loadedMap.CTSpawnMultiplierY != -1)
             {
-                // CT Icon
-                if (this.CTSpawnIcon == null)
-                {
-                    this.CTSpawnIcon = new Image();
-                    this.CTSpawnIcon.Source = new BitmapImage(new Uri("icon_ct.png", UriKind.RelativeOrAbsolute));
-                    this.CTSpawnIcon.Width = 25;
-                    this.CTSpawnIcon.Height = 25;
-                    this.CTSpawnIcon.Opacity = 0.6;
-                    this.CTSpawnIcon.IsHitTestVisible = false;
-                }
-
-                if(pointsCanvas.Children.IndexOf(CTSpawnIcon) == -1)
-                    pointsCanvas.Children.Add(CTSpawnIcon);
-
-
-                Canvas.SetLeft(CTSpawnIcon, this.loadedMap.CTSpawnMultiplierX * this.mapImage.ActualWidth - (CTSpawnIcon.ActualWidth / 2));
-                Canvas.SetTop(CTSpawnIcon, this.loadedMap.CTSpawnMultiplierY * this.mapImage.ActualWidth - (CTSpawnIcon.ActualHeight / 2));
-
-                // T Icon
-                if (this.TSpawnIcon == null)
-                {
-                    this.TSpawnIcon = new Image();
-                    this.TSpawnIcon.Source = new BitmapImage(new Uri("icon_t.png", UriKind.RelativeOrAbsolute));
-                    this.TSpawnIcon.Width = 25;
-                    this.TSpawnIcon.Height = 25;
-                    this.TSpawnIcon.Opacity = 0.6;
-                    this.TSpawnIcon.IsHitTestVisible = false;
-                }
-
-                if (pointsCanvas.Children.IndexOf(TSpawnIcon) == -1)
-                    pointsCanvas.Children.Add(TSpawnIcon);
-
-                Canvas.SetLeft(TSpawnIcon, this.loadedMap.TSpawnMultiplierX * this.mapImage.ActualWidth - (TSpawnIcon.ActualWidth / 2));
-                Canvas.SetTop(TSpawnIcon, this.loadedMap.TSpawnMultiplierY * this.mapImage.ActualWidth - (TSpawnIcon.ActualHeight / 2));
-
-                // Bomb A Icon
-                if (this.ASiteIcon == null)
-                {
-                    this.ASiteIcon = new Image();
-                    this.ASiteIcon.Source = new BitmapImage(new Uri("icon_a_site.png", UriKind.RelativeOrAbsolute));
-                    this.ASiteIcon.Width = 25;
-                    this.ASiteIcon.Height = 25;
-                    this.ASiteIcon.Opacity = 0.6;
-                    this.ASiteIcon.IsHitTestVisible = false;
-                }
-
-                if (pointsCanvas.Children.IndexOf(ASiteIcon) == -1)
-                    pointsCanvas.Children.Add(ASiteIcon);
-
-                Canvas.SetLeft(ASiteIcon, this.loadedMap.BombAX * this.mapImage.ActualWidth - (ASiteIcon.ActualWidth / 2));
-                Canvas.SetTop(ASiteIcon, this.loadedMap.BombAY * this.mapImage.ActualWidth - (ASiteIcon.ActualHeight / 2));
-
-                // Bomb B Icon
-                if (this.BSiteIcon == null)
-                {
-                    this.BSiteIcon = new Image();
-                    this.BSiteIcon.Source = new BitmapImage(new Uri("icon_b_site.png", UriKind.RelativeOrAbsolute));
-                    this.BSiteIcon.Width = 25;
-                    this.BSiteIcon.Height = 25;
-                    this.BSiteIcon.Opacity = 0.6;
-                    this.BSiteIcon.IsHitTestVisible = false;
-                }
-
-                if (pointsCanvas.Children.IndexOf(BSiteIcon) == -1)
-                    pointsCanvas.Children.Add(BSiteIcon);
-
-                Canvas.SetLeft(BSiteIcon, this.loadedMap.BombBX * this.mapImage.ActualWidth - (BSiteIcon.ActualWidth / 2));
-                Canvas.SetTop(BSiteIcon, this.loadedMap.BombBY * this.mapImage.ActualWidth - (BSiteIcon.ActualHeight / 2));
+                this.positionIcons();
             }
+        }
+
+        private void positionIcons()
+        {
+            // CT Icon
+            if (this.CTSpawnIcon == null)
+            {
+                this.CTSpawnIcon = new Image();
+                this.CTSpawnIcon.Source = new BitmapImage(new Uri("icon_ct.png", UriKind.RelativeOrAbsolute));
+                this.CTSpawnIcon.Width = 25;
+                this.CTSpawnIcon.Height = 25;
+                this.CTSpawnIcon.Opacity = 0.6;
+                this.CTSpawnIcon.IsHitTestVisible = false;
+            }
+
+            if (pointsCanvas.Children.IndexOf(CTSpawnIcon) == -1)
+                pointsCanvas.Children.Add(CTSpawnIcon);
+
+
+            Canvas.SetLeft(CTSpawnIcon, this.loadedMap.CTSpawnMultiplierX * this.mapImage.ActualWidth - (CTSpawnIcon.ActualWidth / 2));
+            Canvas.SetTop(CTSpawnIcon, this.loadedMap.CTSpawnMultiplierY * this.mapImage.ActualWidth - (CTSpawnIcon.ActualHeight / 2));
+
+            // T Icon
+            if (this.TSpawnIcon == null)
+            {
+                this.TSpawnIcon = new Image();
+                this.TSpawnIcon.Source = new BitmapImage(new Uri("icon_t.png", UriKind.RelativeOrAbsolute));
+                this.TSpawnIcon.Width = 25;
+                this.TSpawnIcon.Height = 25;
+                this.TSpawnIcon.Opacity = 0.6;
+                this.TSpawnIcon.IsHitTestVisible = false;
+            }
+
+            if (pointsCanvas.Children.IndexOf(TSpawnIcon) == -1)
+                pointsCanvas.Children.Add(TSpawnIcon);
+
+            Canvas.SetLeft(TSpawnIcon, this.loadedMap.TSpawnMultiplierX * this.mapImage.ActualWidth - (TSpawnIcon.ActualWidth / 2));
+            Canvas.SetTop(TSpawnIcon, this.loadedMap.TSpawnMultiplierY * this.mapImage.ActualWidth - (TSpawnIcon.ActualHeight / 2));
+
+            // Bomb A Icon
+            if (this.ASiteIcon == null)
+            {
+                this.ASiteIcon = new Image();
+                this.ASiteIcon.Source = new BitmapImage(new Uri("icon_a_site.png", UriKind.RelativeOrAbsolute));
+                this.ASiteIcon.Width = 25;
+                this.ASiteIcon.Height = 25;
+                this.ASiteIcon.Opacity = 0.6;
+                this.ASiteIcon.IsHitTestVisible = false;
+            }
+
+            if (pointsCanvas.Children.IndexOf(ASiteIcon) == -1)
+                pointsCanvas.Children.Add(ASiteIcon);
+
+            Canvas.SetLeft(ASiteIcon, this.loadedMap.BombAX * this.mapImage.ActualWidth - (ASiteIcon.ActualWidth / 2));
+            Canvas.SetTop(ASiteIcon, this.loadedMap.BombAY * this.mapImage.ActualWidth - (ASiteIcon.ActualHeight / 2));
+
+            // Bomb B Icon
+            if (this.BSiteIcon == null)
+            {
+                this.BSiteIcon = new Image();
+                this.BSiteIcon.Source = new BitmapImage(new Uri("icon_b_site.png", UriKind.RelativeOrAbsolute));
+                this.BSiteIcon.Width = 25;
+                this.BSiteIcon.Height = 25;
+                this.BSiteIcon.Opacity = 0.6;
+                this.BSiteIcon.IsHitTestVisible = false;
+            }
+
+            if (pointsCanvas.Children.IndexOf(BSiteIcon) == -1)
+                pointsCanvas.Children.Add(BSiteIcon);
+
+            Canvas.SetLeft(BSiteIcon, this.loadedMap.BombBX * this.mapImage.ActualWidth - (BSiteIcon.ActualWidth / 2));
+            Canvas.SetTop(BSiteIcon, this.loadedMap.BombBY * this.mapImage.ActualWidth - (BSiteIcon.ActualHeight / 2));
         }
 
         private double calculateDotDistanceInUnits()
         {
-            Ellipse circleLeft = pointsCanvas.Children[pointsCanvas.Children.IndexOf(leftPoint.Circle)] as Ellipse;
-            double leftX = Canvas.GetLeft(circleLeft);
-            double leftY = Canvas.GetTop(circleLeft);
+            Ellipse circleLeft = pointsCanvas.Children[pointsCanvas.Children.IndexOf(this.DrawMode == eDrawMode.Shooting ? this.leftPoint.Circle : this.bombCircle.Circle)] as Ellipse;
+            double leftX = Canvas.GetLeft(circleLeft) + circleLeft.ActualWidth / 2;
+            double leftY = Canvas.GetTop(circleLeft) + circleLeft.ActualHeight / 2;
 
             Ellipse circleRight = pointsCanvas.Children[pointsCanvas.Children.IndexOf(rightPoint.Circle)] as Ellipse;
-            double rightX = Canvas.GetLeft(circleRight);
-            double rightY = Canvas.GetTop(circleRight);
+            double rightX = Canvas.GetLeft(circleRight) + circleRight.ActualWidth / 2;
+            double rightY = Canvas.GetTop(circleRight) + circleRight.ActualHeight / 2;
 
             // Distance in shown pixels
             double diffPixels = Math.Sqrt(Math.Pow(Math.Abs(leftX - rightX), 2) + Math.Pow(Math.Abs(leftY - rightY), 2));
@@ -362,94 +472,13 @@ namespace Damage_Calculator
             return unitsDifference;
         }
 
-        #region events
-        private void mapImage_LayoutUpdated(object sender, EventArgs e)
+        private void calculateAndUpdateShootingDamage()
         {
-            this.updateCirclePositions();
-        }
-
-        private void mapImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            if (this.leftPoint == null)
-                leftPoint = new MapPoint();
-
-            Point mousePos = Mouse.GetPosition(pointsCanvas);
-            pointsCanvas.Children.Remove(leftPoint.Circle);
-
-            var circle = this.getPointEllipse(this.leftPointColour);
-
-            pointsCanvas.Children.Add(circle);
-
-            leftPoint.PercentageX = mousePos.X * 100f / pointsCanvas.ActualWidth;
-            leftPoint.PercentageY = mousePos.Y * 100f / pointsCanvas.ActualHeight;
-
-            leftPoint.Circle = circle;
-
-            this.updateCirclePositions();
-        }
-
-        private void mapImage_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            if (this.rightPoint == null)
-                this.rightPoint = new MapPoint();
-
-            Point mousePos = Mouse.GetPosition(pointsCanvas);
-            pointsCanvas.Children.Remove(rightPoint.Circle);
-
-            var circle = this.getPointEllipse(this.rightPointColour);
-
-            pointsCanvas.Children.Add(circle);
-
-            rightPoint.PercentageX = mousePos.X * 100f / pointsCanvas.ActualWidth;
-            rightPoint.PercentageY = mousePos.Y * 100f / pointsCanvas.ActualHeight;
-
-            rightPoint.Circle = circle;
-
-            this.updateCirclePositions();
-        }
-
-        private void changeTheme_Click(object sender, RoutedEventArgs e)
-        {
-            switch (int.Parse(((MenuItem)sender).Uid))
-            {
-                case 0: REghZyFramework.Themes.ThemesController.SetTheme(REghZyFramework.Themes.ThemesController.ThemeTypes.Dark);
-                    rectTop.Fill = rectSide.Fill = new SolidColorBrush(Colors.White);
-                    txtEasterEggMetres.Text = "Metres:";
-                    break;
-                case 1: REghZyFramework.Themes.ThemesController.SetTheme(REghZyFramework.Themes.ThemesController.ThemeTypes.Light);
-                    rectTop.Fill = rectSide.Fill = new SolidColorBrush(Colors.Black);
-                    txtEasterEggMetres.Text = "Meters:";
-                    break;
-            }
-            e.Handled = true;
-        }
-
-        private void comboBoxMaps_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var map = ((sender as ComboBox).SelectedItem as ComboBoxItem)?.Tag as CsgoMapOverview;
-
-            if (map != null)
-                this.loadMap(map);
-
-            this.resetCanvas();
-            this.loadedMap = map;
-        }
-
-        private void settings_Updated(object sender, EventArgs e)
-        {
-            if (this.selectedWeapon == null || !this.lineDrawn)
-            {
-                if(txtResult != null && txtResultArmor != null)
-                    txtResult.Text = txtResultArmor.Text = "0";
-
-                return;
-            }
-
             double damage = this.selectedWeapon.BaseDamage;
             double absorbedDamageByArmor = 0;
             bool wasArmorHit = false;
 
-            if(this.unitsDistance > this.selectedWeapon.MaxBulletRange)
+            if (this.unitsDistance > this.selectedWeapon.MaxBulletRange)
             {
                 damage = 0;
                 txtResult.Text = txtResultArmor.Text = damage.ToString();
@@ -474,7 +503,7 @@ namespace Damage_Calculator
                     wasArmorHit = true;
                 }
             }
-            else if(radioChestArms.IsChecked == true)
+            else if (radioChestArms.IsChecked == true)
             {
                 // Chest or arms
                 if (chkKevlar.IsChecked == true)
@@ -486,7 +515,7 @@ namespace Damage_Calculator
                     wasArmorHit = true;
                 }
             }
-            else if(radioStomach.IsChecked == true)
+            else if (radioStomach.IsChecked == true)
             {
                 // Stomach
                 damage *= 1.25f;
@@ -511,6 +540,184 @@ namespace Damage_Calculator
             txtResultArmor.Text = (wasArmorHit ? (int)(absorbedDamageByArmor / 2) : 0).ToString();
 
             // TODO: HP and armor and HP and armor left after shot
+        }
+
+        private void calculateAndUpdateBombDamage()
+        {
+            const double damagePercentage = 1.0d;
+
+            double flDamage = this.loadedMap.BombDamage; // 500 - default, if radius is not written on the map https://i.imgur.com/mUSaTHj.png
+            double flBombRadius = flDamage * 3.5d;
+            double flDistanceToLocalPlayer = (double)this.unitsDistance;// ((c4bomb origin + viewoffset) - (localplayer origin + viewoffset))
+            double fSigma = flBombRadius / 3.0d;
+            double fGaussianFalloff = Math.Exp(-flDistanceToLocalPlayer * flDistanceToLocalPlayer / (2.0d * fSigma * fSigma));
+            double flAdjustedDamage = flDamage * fGaussianFalloff * damagePercentage;
+
+            bool wasArmorHit = false;
+            double flAdjustedDamageBeforeArmor = flAdjustedDamage;
+
+            if (chkArmorAny.IsChecked == true)
+            {
+                flAdjustedDamage = scaleDamageArmor(flAdjustedDamage, 100);
+                wasArmorHit = true;
+            }
+
+            txtResult.Text = ((int)flAdjustedDamage).ToString();
+
+            txtResultArmor.Text = (wasArmorHit ? (int)((flAdjustedDamageBeforeArmor - flAdjustedDamage) / 2) : 0).ToString();
+        }
+
+        double scaleDamageArmor(double flDamage, int armor_value)
+        {
+            double flArmorRatio = 0.5d;
+            double flArmorBonus = 0.5d;
+            if (armor_value > 0)
+            {
+                double flNew = flDamage * flArmorRatio;
+                double flArmor = (flDamage - flNew) * flArmorBonus;
+
+                if (flArmor > (double)armor_value)
+                {
+                    flArmor = (double)armor_value * (1d / flArmorBonus);
+                    flNew = flDamage - flArmor;
+                }
+
+                flDamage = flNew;
+            }
+            return flDamage;
+        }
+
+        #region events
+        private void radioModeShooting_Checked(object sender, RoutedEventArgs e)
+        {
+            this.resetCanvas();
+            this.DrawMode = eDrawMode.Shooting;
+            if (this.IsInitialized)
+            {
+                this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = Visibility.Visible;
+                this.chkArmorAny.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void radioModeBomb_Checked(object sender, RoutedEventArgs e)
+        {
+            this.resetCanvas();
+            this.DrawMode = eDrawMode.Bomb;
+            if (this.IsInitialized)
+            {
+                this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = Visibility.Collapsed;
+                this.chkArmorAny.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void mapImage_LayoutUpdated(object sender, EventArgs e)
+        {
+            this.updateCirclePositions();
+        }
+
+        private void mapImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (this.DrawMode == eDrawMode.Shooting)
+            {
+                if (this.leftPoint == null)
+                    this.leftPoint = new MapPoint();
+
+                Point mousePos = Mouse.GetPosition(this.pointsCanvas);
+                this.pointsCanvas.Children.Remove(this.leftPoint.Circle);
+
+                var circle = this.getPointEllipse(this.leftPointColour);
+
+                this.pointsCanvas.Children.Add(circle);
+
+                this.leftPoint.PercentageX = mousePos.X * 100f / this.pointsCanvas.ActualWidth;
+                this.leftPoint.PercentageY = mousePos.Y * 100f / this.pointsCanvas.ActualHeight;
+                this.leftPoint.PercentageScale = circle.Width * 100f / this.pointsCanvas.ActualWidth;
+
+                this.leftPoint.Circle = circle;
+
+                this.updateCirclePositions();
+            }
+            else if (this.DrawMode == eDrawMode.Bomb)
+            {
+                if (this.bombCircle == null)
+                    this.bombCircle = new MapPoint();
+
+                Point mousePos = Mouse.GetPosition(this.pointsCanvas);
+                this.pointsCanvas.Children.Remove(this.bombCircle.Circle);
+
+                var circle = this.getBombEllipse(this.leftPointColour);
+
+                this.pointsCanvas.Children.Add(circle);
+
+                this.bombCircle.PercentageX = mousePos.X * 100f / this.pointsCanvas.ActualWidth;
+                this.bombCircle.PercentageY = mousePos.Y * 100f / this.pointsCanvas.ActualHeight;
+                this.bombCircle.PercentageScale = circle.Width * 100f / this.pointsCanvas.ActualWidth;
+
+                this.bombCircle.Circle = circle;
+
+                this.updateCirclePositions();
+            }
+        }
+
+        private void mapImage_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (this.rightPoint == null)
+                this.rightPoint = new MapPoint();
+
+            Point mousePos = Mouse.GetPosition(this.pointsCanvas);
+            this.pointsCanvas.Children.Remove(this.rightPoint.Circle);
+
+            var circle = this.getPointEllipse(this.rightPointColour);
+
+            this.pointsCanvas.Children.Add(circle);
+
+            this.rightPoint.PercentageX = mousePos.X * 100f / this.pointsCanvas.ActualWidth;
+            this.rightPoint.PercentageY = mousePos.Y * 100f / this.pointsCanvas.ActualHeight;
+            this.rightPoint.PercentageScale = circle.Width * 100f / this.pointsCanvas.ActualWidth;
+
+            this.rightPoint.Circle = circle;
+
+            this.updateCirclePositions();
+        }
+
+        private void changeTheme_Click(object sender, RoutedEventArgs e)
+        {
+            switch (int.Parse(((MenuItem)sender).Uid))
+            {
+                case 0: REghZyFramework.Themes.ThemesController.SetTheme(REghZyFramework.Themes.ThemesController.ThemeTypes.Dark);
+                    rectTop.Fill = rectSide.Fill = new SolidColorBrush(Colors.White);
+                    txtEasterEggMetres.Text = "Metres:";
+                    break;
+                case 1: REghZyFramework.Themes.ThemesController.SetTheme(REghZyFramework.Themes.ThemesController.ThemeTypes.Light);
+                    rectTop.Fill = rectSide.Fill = new SolidColorBrush(Colors.Black);
+                    txtEasterEggMetres.Text = "Meters:";
+                    break;
+            }
+            e.Handled = true;
+        }
+
+        private void comboBoxMaps_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var map = ((sender as ComboBox).SelectedItem as ComboBoxItem)?.Tag as CsgoMap;
+
+            if (map != null)
+                this.loadMap(map);
+        }
+
+        private void settings_Updated(object sender, EventArgs e)
+        {
+            if ((this.DrawMode == eDrawMode.Shooting && this.selectedWeapon == null) || !this.lineDrawn)
+            {
+                if(txtResult != null && txtResultArmor != null)
+                    txtResult.Text = txtResultArmor.Text = "0";
+
+                return;
+            }
+
+            if (this.DrawMode == eDrawMode.Shooting)
+                this.calculateAndUpdateShootingDamage();
+            else if (this.DrawMode == eDrawMode.Bomb)
+                calculateAndUpdateBombDamage();
         }
 
         private void comboWeapons_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -566,4 +773,6 @@ namespace Damage_Calculator
         }
         #endregion
     }
+
+    enum eDrawMode { Shooting, Bomb }
 }

@@ -68,8 +68,10 @@
     <Compile Include="CsgoHelper.cs" />
     <Compile Include="DDSImageParser.cs" />
     <Compile Include="Globals.cs" />
+    <Compile Include="Models\BSPHeader.cs" />
+    <Compile Include="Models\BSPLump.cs" />
     <Compile Include="Models\CsgoWeapon.cs" />
-    <Compile Include="Models\CsgoMapOverview.cs" />
+    <Compile Include="Models\CsgoMap.cs" />
     <Compile Include="Models\MapPoint.cs" />
     <Compile Include="Models\Settings.cs" />
     <Compile Include="Models\SteamGame.cs" />

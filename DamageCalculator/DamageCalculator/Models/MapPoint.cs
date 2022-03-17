@@ -13,5 +13,7 @@ namespace Damage_Calculator.Models
         public double PercentageX { get; set; }
 
         public double PercentageY { get; set; }
+
+        public double PercentageScale { get; set; }
     }
 }

@@ -24,5 +24,22 @@ namespace Damage_Calculator
             image.EndInit();
             return image;
         }
+
+        /// <summary>
+        /// Reads data (structs and primitive types (except strings)) into a struct.
+        /// </summary>
+        /// <typeparam name="T">The type of struct.</typeparam>
+        /// <param name="data">The data to be fitted.</param>
+        /// <returns>The data interpreted as the given struct.</returns>
+        static T ReadByteArrayIntoStruct<T>(byte[] data) where T : struct
+        {
+            unsafe // needed to use pointers
+            {
+                fixed (byte* p = &data[0]) // Fixed so GC doesn't move shit, point to the first element
+                {
+                    return (T)System.Runtime.InteropServices.Marshal.PtrToStructure(new IntPtr(p), typeof(T));
+                }
+            }
+        }
     }
 }

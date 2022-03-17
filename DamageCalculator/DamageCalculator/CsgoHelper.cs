@@ -83,22 +83,59 @@ namespace Damage_Calculator
             return true;
         }
 
-        public List<CsgoMapOverview> GetMaps()
+        public List<CsgoMap> GetMaps()
         {
             List<string> mapTextFiles = Directory.GetFiles(System.IO.Path.Combine(this.CsgoPath, "csgo\\resource\\overviews")).ToList().Where(f => f.ToLower().EndsWith(".txt")).Where(f =>
                 this.mapFileNameValid(f)).ToList();
 
-            List<CsgoMapOverview> maps = new List<CsgoMapOverview>();
+            List<CsgoMap> maps = new List<CsgoMap>();
 
             foreach (string file in mapTextFiles)
             {
+                var map = new CsgoMap();
+
+                // Save path to radar file if available
                 string potentialRadarFile = System.IO.Path.Combine(this.CsgoPath, "csgo\\resource\\overviews", System.IO.Path.GetFileNameWithoutExtension(file) + "_radar.dds");
-                var map = new CsgoMapOverview();
                 if (File.Exists(potentialRadarFile))
                 {
                     map.MapImagePath = potentialRadarFile;
                 }
 
+                // Save path to BSP file if available
+                string potentialBspFile = System.IO.Path.Combine(this.CsgoPath, "csgo\\maps", System.IO.Path.GetFileNameWithoutExtension(file) + ".bsp");
+                if (File.Exists(potentialBspFile))
+                {
+                    map.BspFilePath = potentialBspFile;
+                }
+
+                // Save path to NAV file if available
+                string potentialNavFile = System.IO.Path.Combine(this.CsgoPath, "csgo\\maps", System.IO.Path.GetFileNameWithoutExtension(file) + ".nav");
+                if (File.Exists(potentialNavFile))
+                {
+                    map.NavFilePath = potentialNavFile;
+                }
+
+                // Set map type
+                switch (System.IO.Path.GetFileNameWithoutExtension(file).Split('_').First().ToLower())
+                {
+                    case "de":
+                        map.MapType = CsgoMap.eMapType.Defusal;
+                        break;
+                    case "cs":
+                        map.MapType = CsgoMap.eMapType.Hostage;
+                        break;
+                    case "dz":
+                        map.MapType = CsgoMap.eMapType.DangerZone;
+                        break;
+                    case "ar":
+                        map.MapType = CsgoMap.eMapType.ArmsRace;
+                        break;
+                    default:
+                        map.MapType = CsgoMap.eMapType.Undefined;
+                        break;
+                }
+
+                // Get properties from accompanying text file
                 var vdf = new VDFFile(file);
                 if (vdf.RootElements.Count > 0)
                 {
@@ -149,11 +186,13 @@ namespace Damage_Calculator
                     }
                 }
 
+                // Save map name without prefix
                 map.MapFileName = System.IO.Path.GetFileNameWithoutExtension(file).Split('_').Last();
                 
                 DDSImage image;
                 try
                 {
+                    // Read actual radar
                     image = new DDSImage(System.IO.File.ReadAllBytes(map.MapImagePath));
                 }
                 catch
@@ -162,8 +201,10 @@ namespace Damage_Calculator
                 }
 
                 if (image.BitmapImage.Width != image.BitmapImage.Height)
+                    // We only want square map images, which should normally always be given
                     continue;
 
+                // Some workaround I found online for some thread error I forgot
                 System.Windows.Application.Current.Dispatcher.Invoke((Action)delegate
                 {
                     map.MapImage = Globals.BitmapToImageSource(image.BitmapImage);
@@ -337,6 +378,45 @@ namespace Damage_Calculator
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Reads entity list from uncompressed BSP file.
+        /// </summary>
+        /// <param name="bspFilePath">The absolute path to the BSP file.</param>
+        /// <returns>the entity list, null if actual length differed from length specified in file, or a general error occurred.</returns>
+        public string ReadEntityListFromBsp(string bspFilePath)
+        {
+            using(var bspFile = File.OpenRead(bspFilePath))
+            {
+                using(var reader = new BinaryReader(bspFile))
+                {
+                    reader.BaseStream.Position = 8; // Skip magic bytes and file version
+                    int offset = reader.ReadInt32(); // Lump data offset from beginning of file
+                    int length = reader.ReadInt32(); // Length of lump data
+
+                    reader.BaseStream.Position = offset;
+                    char[] chars = new char[length];
+                    int charsRead = reader.Read(chars, 0, length);
+
+                    if(charsRead == length)
+                    {
+                        // Everything was read
+                        return new string(chars);
+                    }
+                }
+            }
+            return null;
+        }
+
+        private bool isLumpUnused(byte[] lump)
+        {
+            for(int i = 0; i < lump.Length; i++)
+            {
+                if (lump[i] != 0)
+                    return false;
+            }
+            return true;
         }
     }
 }

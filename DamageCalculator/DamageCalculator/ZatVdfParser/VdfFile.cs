@@ -19,10 +19,15 @@ namespace Damage_Calculator.ZatVdfParser
         #endregion
 
         #region CONSTRUCTORS
-        public VDFFile(string filePath)
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        /// <param name="filePathOrText">The path to the file, or the text to be parsed.</param>
+        /// <param name="parseTextDirectly">Whether the given parameter is a file path or the actual string to be parsed.</param>
+        public VDFFile(string filePathOrText, bool parseTextDirectly = false)
         {
             RootElements = new List<Element>();
-            Parse(filePath);
+            Parse(filePathOrText, parseTextDirectly);
         }
         #endregion
 
@@ -34,10 +39,18 @@ namespace Damage_Calculator.ZatVdfParser
                 builder.Append(child.ToVDF());
             return builder.ToString();
         }
-        private void Parse(string filePath)
+        private void Parse(string filePathOrText, bool parseTextDirectly)
         {
             Element currentLevel = null;
-            using (StreamReader reader = new StreamReader(filePath))
+
+            // Generate stream from string in case we want to read it directly, instead of using a file stream (boolean parameter)
+            var stream = new MemoryStream();
+            var writer = new StreamWriter(stream);
+            writer.Write(filePathOrText);
+            writer.Flush();
+            stream.Position = 0;
+
+            using (StreamReader reader = parseTextDirectly ? new StreamReader(stream) : new StreamReader(filePathOrText))
             {
                 string line = null;
                 while ((line = reader.ReadLine()) != null)

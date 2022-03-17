@@ -17,6 +17,7 @@ using System.Windows.Shapes;
 using Damage_Calculator.Models;
 using Damage_Calculator.ZatVdfParser;
 using System.Xml.Serialization;
+using System.Globalization;
 
 namespace Damage_Calculator
 {
@@ -218,61 +219,161 @@ namespace Damage_Calculator
             if (map.BspFilePath != null)
             {
                 // Map radar has an actual existing BSP map file
-                map.EntityList = Globals.Settings.CsgoHelper.ReadEntityListFromBsp(map.BspFilePath);
-
-                // Separate all entities, which removes curly braces from the start or end of entities
-                string[] entities = map.EntityList.Split(new string[] { "}\n{" }, StringSplitOptions.None);
-                for (int i = 0; i < entities.Length; i++)
-                {
-                    // Add start or end curly brace back, if nonexistent
-                    if (!entities[i].StartsWith("{"))
-                        entities[i] = "{" + entities[i];
-                    else if (!entities[i].EndsWith("}"))
-                        entities[i] += "}";
-
-                    // Add a generic name for the object, to fool it into complying with normal VDF standards
-                    entities[i] = "\"entity\"\n" + entities[i];
-
-                    VDFFile vdf = new VDFFile(entities[i], parseTextDirectly: true);
-                    var elementRootVdf = vdf["entity"];
-                    if(elementRootVdf["classname"].Value == "info_map_parameters")
-                    {
-                        string bombRadius = elementRootVdf["bombradius"]?.Value;
-                        if (bombRadius != null)
-                        {
-                            // Custom bomb radius
-                            if (float.TryParse(bombRadius, out float bombRad) && bombRad >= 0)
-                            {
-                                // bombradius is valid and not negative
-                                map.BombDamage = bombRad;
-                            }
-                        }
-                        break;
-                    }
-                }
+                this.parseBspData(map);
             }
+
+            // Set indicator checkboxes
+            this.chkHasMapFile.IsChecked = map.BspFilePath != null;
+            this.chkHasNavFile.IsChecked = map.NavFilePath != null;
 
             this.resetCanvas();
 
             if (map.MapType == CsgoMap.eMapType.Defusal)
             {
                 this.radioModeBomb.IsEnabled = true;
+                this.txtBombMaxDamage.Text = map.BombDamage.ToString();
+                this.txtBombRadius.Text = (map.BombDamage * 3.5f).ToString();
             }
             else
             {
                 this.radioModeBomb.IsEnabled = false;
                 // Select the only other working one in that case
                 this.radioModeShooting.IsChecked = true;
+                this.txtBombMaxDamage.Text = this.txtBombRadius.Text = "None";
             }
 
             this.loadedMap = map;
+        }
+
+        private void parseBspData(CsgoMap map)
+        {
+            map.EntityList = Globals.Settings.CsgoHelper.ReadEntityListFromBsp(map.BspFilePath);
+
+            // Current format for one entity is: 
+            //
+            //  {
+            //      "property"  "value"
+            //  }
+            //
+            // but we want this format like in VDF files, so we can use our VDF parser:
+            //
+            //  "sometext"
+            //  {
+            //      "property" "value"
+            //  }
+            //
+
+            // Separate all entities, which temporarily removes curly braces from the start and/or end of entities
+            string[] entities = map.EntityList.Split(new string[] { "}\n{" }, StringSplitOptions.None);
+            for (int i = 0; i < entities.Length; i++)
+            {
+                // Add start or end curly brace back, if nonexistent, because we removed it during separation
+                if (!entities[i].StartsWith("{"))
+                    entities[i] = "{" + entities[i];
+                else if (!entities[i].EndsWith("}"))
+                    entities[i] += "}";
+
+                // Add a generic name for the object, to fool it into complying with normal VDF standards,
+                // we'll just call every entity "entity" for simplicity
+                entities[i] = "\"entity\"\n" + entities[i];
+
+                VDFFile vdf = new VDFFile(entities[i], parseTextDirectly: true);
+                var entityRootVdf = vdf["entity"];
+                string className = entityRootVdf["classname"].Value;
+
+                // Check for map parameters entity
+                if (className == "info_map_parameters")
+                {
+                    string bombRadius = entityRootVdf["bombradius"]?.Value;
+                    if (bombRadius != null)
+                    {
+                        // Map has custom bomb radius
+                        if (float.TryParse(bombRadius, out float bombRad) && bombRad >= 0)
+                        {
+                            // bombradius is valid and not negative
+                            map.BombDamage = bombRad;
+                        }
+                    }
+                }
+
+                if (className == "info_player_terrorist" || className == "info_player_counterterrorist")
+                {
+                    // Entity is spawn point
+                    var spawn = new PlayerSpawn();
+                    spawn.Team = className == "info_player_terrorist" ? ePlayerTeam.Terrorist : ePlayerTeam.CounterTerrorist;
+                    spawn.Origin = this.stringToVector3(entityRootVdf["origin"]?.Value) ?? Vector3.Empty;
+                    spawn.Angles = this.stringToVector3(entityRootVdf["angles"]?.Value) ?? Vector3.Empty;
+
+                    // highest priority by default. if ALL spawns are high priority, then there are no priority spawns,
+                    // in that case we will later check the amount of priority spawns and if it is the same as the total spawns.
+                    // This is done for each team separately.
+                    int priority = 0;
+                    int.TryParse(entityRootVdf["priority"]?.Value, out priority);
+
+                    if (priority < 1) // 0 or nothing means it's highest priority, then counts up as an integer with decreasing priority
+                    {
+                        spawn.IsPriority = true;
+                        // Count prio spawns
+                        if (spawn.Team == ePlayerTeam.CounterTerrorist)
+                            map.AmountPrioritySpawnsCT++;
+                        else
+                            map.AmountPrioritySpawnsT++;
+                    }
+
+                    // Count all (prio and normal) spawns
+                    if (spawn.Team == ePlayerTeam.CounterTerrorist)
+                        map.AmountSpawnsCT++;
+                    else
+                        map.AmountSpawnsT++;
+
+                    if (entityRootVdf["targetname"]?.Value == "spawnpoints.2v2")
+                    {
+                        spawn.Type = eSpawnType.Wingman;
+                    }
+
+                    map.SpawnPoints.Add(spawn);
+                }
+            }
+        }
+
+        private Vector3 stringToVector3(string coords)
+        {
+            Vector3 vector = new Vector3();
+            string[] coordsArray = coords.Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (coordsArray.Length != 3)
+                return null;
+
+            float x, y, z;
+
+            bool succX = float.TryParse(coordsArray[0], NumberStyles.Any, CultureInfo.InvariantCulture, out x);
+            bool succY = float.TryParse(coordsArray[1], NumberStyles.Any, CultureInfo.InvariantCulture, out y);
+            bool succZ = float.TryParse(coordsArray[2], NumberStyles.Any, CultureInfo.InvariantCulture, out z);
+
+            if(succX && succY && succZ)
+            {
+                vector.X = x;
+                vector.Y = y;
+                vector.Z = z;
+                return vector;
+            }
+
+            return null;
         }
 
         private double getPixelsFromUnits(double units)
         {
             int mapSizePixels = (this.mapImage.Source as BitmapSource).PixelWidth;
             double mapSizeUnits = mapSizePixels * this.loadedMap.MapSizeMultiplier;
-            return units * this.pointsCanvas.ActualWidth / mapSizeUnits;
+            return Math.Abs(units) * this.pointsCanvas.ActualWidth / mapSizeUnits;
+        }
+
+        private Point getPointFromGameCoords(double x, double y)
+        {
+            Point p = new Point();
+            p.X = this.getPixelsFromUnits(this.loadedMap.UpperLeftWorldXCoordinate - x);
+            p.Y = this.getPixelsFromUnits(this.loadedMap.UpperLeftWorldYCoordinate - y);
+            return p;
         }
 
         private Ellipse getPointEllipse(Color strokeColour)
@@ -303,10 +404,40 @@ namespace Damage_Calculator
             return circle;
         }
 
+        private ctrlPlayerSpawn getSpawnBlip(PlayerSpawn spawn)
+        {
+            ctrlPlayerSpawn spawnBlip = new ctrlPlayerSpawn();
+            spawnBlip.Width = spawnBlip.Height = this.getPixelsFromUnits(50);
+            Color blipColour;
+
+            if (spawn.Team == ePlayerTeam.Terrorist)
+                blipColour = Color.FromArgb(255, 252, 151, 0);
+            else
+                blipColour = Color.FromArgb(255, 0, 57, 245);
+
+            spawnBlip.SetColour(blipColour);
+            Color colourPriority = Color.FromArgb(150, 200, 200, 0);
+            Color colourNoPriority = Color.FromArgb(150, 20, 20, 0);
+
+            // If all are priority spawns, just mark all of them as low prio, for consistency
+            if (spawn.Team == ePlayerTeam.Terrorist && this.loadedMap.HasPrioritySpawnsT || spawn.Team == ePlayerTeam.CounterTerrorist && this.loadedMap.HasPrioritySpawnsCT)
+            {
+                // This team has at least 1 priority spawn, so only colour the priority ones bright
+                spawnBlip.SetEllipseFill(spawn.IsPriority ? colourPriority : colourNoPriority);
+            }
+            else
+            {
+                // This team doesn't have any priority spawns, so colour it all dark
+                spawnBlip.SetEllipseFill(colourNoPriority);
+            }
+
+            spawnBlip.SetRotation(360 - spawn.Angles.Y + 90);
+
+            return spawnBlip;
+        }
+
         private void updateCirclePositions()
         {
-            // TODO: Update bomb circle size
-
             if (this.connectingLine == null)
                 this.connectingLine = new Line();
 
@@ -333,22 +464,28 @@ namespace Damage_Calculator
 
             if((this.leftPoint?.Circle != null || this.bombCircle?.Circle != null) && this.rightPoint?.Circle != null)
             {
+                // Right click cirle exists, and left click circle or left click bomb circle exists
+                // Ready to calculate damage and draw the in-between line
                 if (this.DrawMode == eDrawMode.Shooting)
                 {
+                    // Update line start pos to left click circle
                     this.connectingLine.X1 = Canvas.GetLeft(this.leftPoint.Circle) + (this.leftPoint.Circle.Width / 2);
                     this.connectingLine.Y1 = Canvas.GetTop(this.leftPoint.Circle) + (this.leftPoint.Circle.Height / 2);
                 }
                 else
                 {
+                    // Update line start pos to left click bomb circle
                     this.connectingLine.X1 = Canvas.GetLeft(this.bombCircle.Circle) + (this.bombCircle.Circle.Width / 2);
                     this.connectingLine.Y1 = Canvas.GetTop(this.bombCircle.Circle) + (this.bombCircle.Circle.Height / 2);
                 }
+                // Update line end pos to right click circle
                 this.connectingLine.X2 = Canvas.GetLeft(this.rightPoint.Circle) + (this.rightPoint.Circle.Width / 2);
                 this.connectingLine.Y2 = Canvas.GetTop(this.rightPoint.Circle) + (this.rightPoint.Circle.Height / 2);
 
                 this.connectingLine.Fill = null;
-                this.connectingLine.Stroke = new SolidColorBrush(Color.FromArgb(140, 255, 255, 255));
+                this.connectingLine.Stroke = new SolidColorBrush(Color.FromArgb(140, 255, 255, 255)); // White, slightly transparent
                 this.connectingLine.StrokeThickness = 2;
+                // Make it not clickable
                 this.connectingLine.IsHitTestVisible = false;
 
                 int indexLine = pointsCanvas.Children.IndexOf(this.connectingLine);
@@ -358,9 +495,13 @@ namespace Damage_Calculator
                     this.lineDrawn = true;
                 }
 
+                // Update top right corner distance texts
                 this.unitsDistance = this.calculateDotDistanceInUnits();
+
                 this.textDistanceUnits.Text = Math.Round(this.unitsDistance, 2).ToString();
                 this.textDistanceMetres.Text = Math.Round(this.unitsDistance / 39.37, 2).ToString();
+
+                // Recalculate damage
                 this.settings_Updated(null, null);
             }
             else
@@ -369,82 +510,143 @@ namespace Damage_Calculator
                 this.lineDrawn = false;
             }
 
-            if(this.loadedMap != null && this.loadedMap.CTSpawnMultiplierX != -1 && this.loadedMap.CTSpawnMultiplierY != -1)
+            if(this.loadedMap != null)
             {
                 this.positionIcons();
+                this.positionSpawns();
+            }
+        }
+
+        private void positionSpawns()
+        {
+            double size = this.getPixelsFromUnits(70);
+            foreach (var spawn in this.loadedMap.SpawnPoints)
+            {
+                if (!spawn.IsPriority && mnuAllowNonPrioritySpawns.IsChecked == false)
+                    continue;
+
+                if (spawn.Type == eSpawnType.Standard && mnuShowStandardSpawns.IsChecked == false)
+                    continue;
+                else if (spawn.Type == eSpawnType.Wingman && mnuShow2v2Spawns.IsChecked == false)
+                    continue;
+
+                var existingViewBox = this.pointsCanvas.Children.OfType<Viewbox>().FirstOrDefault(v => v.Tag == spawn);
+                if (existingViewBox == null)
+                {
+                    Viewbox box = new Viewbox();
+
+                    var blipControl = this.getSpawnBlip(spawn);
+                    box.Tag = spawn;
+                    box.Child = blipControl;
+                    box.Width = box.Height = size;
+
+                    Point newCoords = this.getPointFromGameCoords(spawn.Origin.X, spawn.Origin.Y);
+
+                    pointsCanvas.Children.Add(box);
+                    Canvas.SetLeft(box, newCoords.X - box.Width / 2);
+                    Canvas.SetTop(box, newCoords.Y - box.Height / 2);
+                }
             }
         }
 
         private void positionIcons()
         {
-            // CT Icon
-            if (this.CTSpawnIcon == null)
+            double left;
+            double top;
+
+            if (mnuShowSpawnAreas.IsChecked == true)
             {
-                this.CTSpawnIcon = new Image();
-                this.CTSpawnIcon.Source = new BitmapImage(new Uri("icon_ct.png", UriKind.RelativeOrAbsolute));
-                this.CTSpawnIcon.Width = 25;
-                this.CTSpawnIcon.Height = 25;
-                this.CTSpawnIcon.Opacity = 0.6;
-                this.CTSpawnIcon.IsHitTestVisible = false;
+                // CT Icon
+                if (this.CTSpawnIcon == null)
+                {
+                    this.CTSpawnIcon = new Image();
+                    this.CTSpawnIcon.Source = new BitmapImage(new Uri("icon_ct.png", UriKind.RelativeOrAbsolute));
+                    this.CTSpawnIcon.Width = 25;
+                    this.CTSpawnIcon.Height = 25;
+                    this.CTSpawnIcon.Opacity = 0.6;
+                    this.CTSpawnIcon.IsHitTestVisible = false;
+                }
+
+                if (pointsCanvas.Children.IndexOf(CTSpawnIcon) == -1 && this.loadedMap.CTSpawnMultiplierX >= 0 && this.loadedMap.CTSpawnMultiplierY >= 0)
+                    pointsCanvas.Children.Add(CTSpawnIcon);
+
+                left = this.loadedMap.CTSpawnMultiplierX * this.mapImage.ActualWidth - (CTSpawnIcon.ActualWidth / 2);
+                top = this.loadedMap.CTSpawnMultiplierY * this.mapImage.ActualWidth - (CTSpawnIcon.ActualHeight / 2);
+                if (left >= 0 && left <= this.mapImage.ActualWidth && top >= 0 && top <= this.mapImage.ActualHeight)
+                {
+                    Canvas.SetLeft(CTSpawnIcon, left);
+                    Canvas.SetTop(CTSpawnIcon, top);
+                }
+
+                // T Icon
+                if (this.TSpawnIcon == null)
+                {
+                    this.TSpawnIcon = new Image();
+                    this.TSpawnIcon.Source = new BitmapImage(new Uri("icon_t.png", UriKind.RelativeOrAbsolute));
+                    this.TSpawnIcon.Width = 25;
+                    this.TSpawnIcon.Height = 25;
+                    this.TSpawnIcon.Opacity = 0.6;
+                    this.TSpawnIcon.IsHitTestVisible = false;
+                }
+
+                if (pointsCanvas.Children.IndexOf(TSpawnIcon) == -1 && this.loadedMap.TSpawnMultiplierX >= 0 && this.loadedMap.TSpawnMultiplierY >= 0)
+                    pointsCanvas.Children.Add(TSpawnIcon);
+
+                left = this.loadedMap.TSpawnMultiplierX * this.mapImage.ActualWidth - (TSpawnIcon.ActualWidth / 2);
+                top = this.loadedMap.TSpawnMultiplierY * this.mapImage.ActualWidth - (TSpawnIcon.ActualHeight / 2);
+                if (left >= 0 && left <= this.mapImage.ActualWidth && top >= 0 && top <= this.mapImage.ActualHeight)
+                {
+                    Canvas.SetLeft(TSpawnIcon, left);
+                    Canvas.SetTop(TSpawnIcon, top);
+                }
             }
 
-            if (pointsCanvas.Children.IndexOf(CTSpawnIcon) == -1)
-                pointsCanvas.Children.Add(CTSpawnIcon);
-
-
-            Canvas.SetLeft(CTSpawnIcon, this.loadedMap.CTSpawnMultiplierX * this.mapImage.ActualWidth - (CTSpawnIcon.ActualWidth / 2));
-            Canvas.SetTop(CTSpawnIcon, this.loadedMap.CTSpawnMultiplierY * this.mapImage.ActualWidth - (CTSpawnIcon.ActualHeight / 2));
-
-            // T Icon
-            if (this.TSpawnIcon == null)
+            if (mnuShowBombSites.IsChecked == true)
             {
-                this.TSpawnIcon = new Image();
-                this.TSpawnIcon.Source = new BitmapImage(new Uri("icon_t.png", UriKind.RelativeOrAbsolute));
-                this.TSpawnIcon.Width = 25;
-                this.TSpawnIcon.Height = 25;
-                this.TSpawnIcon.Opacity = 0.6;
-                this.TSpawnIcon.IsHitTestVisible = false;
+                // Bomb A Icon
+                if (this.ASiteIcon == null)
+                {
+                    this.ASiteIcon = new Image();
+                    this.ASiteIcon.Source = new BitmapImage(new Uri("icon_a_site.png", UriKind.RelativeOrAbsolute));
+                    this.ASiteIcon.Width = 25;
+                    this.ASiteIcon.Height = 25;
+                    this.ASiteIcon.Opacity = 0.6;
+                    this.ASiteIcon.IsHitTestVisible = false;
+                }
+
+                if (pointsCanvas.Children.IndexOf(ASiteIcon) == -1 && this.loadedMap.BombAX >= 0 && this.loadedMap.BombAY >= 0)
+                    pointsCanvas.Children.Add(ASiteIcon);
+
+                left = this.loadedMap.BombAX * this.mapImage.ActualWidth - (ASiteIcon.ActualWidth / 2);
+                top = this.loadedMap.BombAY * this.mapImage.ActualWidth - (ASiteIcon.ActualHeight / 2);
+                if (left >= 0 && left <= this.mapImage.ActualWidth && top >= 0 && top <= this.mapImage.ActualHeight)
+                {
+                    Canvas.SetLeft(ASiteIcon, left);
+                    Canvas.SetTop(ASiteIcon, top);
+                }
+
+                // Bomb B Icon
+                if (this.BSiteIcon == null)
+                {
+                    this.BSiteIcon = new Image();
+                    this.BSiteIcon.Source = new BitmapImage(new Uri("icon_b_site.png", UriKind.RelativeOrAbsolute));
+                    this.BSiteIcon.Width = 25;
+                    this.BSiteIcon.Height = 25;
+                    this.BSiteIcon.Opacity = 0.6;
+                    this.BSiteIcon.IsHitTestVisible = false;
+                }
+
+                if (pointsCanvas.Children.IndexOf(BSiteIcon) == -1 && this.loadedMap.BombBX >= 0 && this.loadedMap.BombBY >= 0)
+                    pointsCanvas.Children.Add(BSiteIcon);
+
+                left = this.loadedMap.BombBX * this.mapImage.ActualWidth - (BSiteIcon.ActualWidth / 2);
+                top = this.loadedMap.BombBY * this.mapImage.ActualWidth - (BSiteIcon.ActualHeight / 2);
+                if (left >= 0 && left <= this.mapImage.ActualWidth && top >= 0 && top <= this.mapImage.ActualHeight)
+                {
+                    Canvas.SetLeft(BSiteIcon, left);
+                    Canvas.SetTop(BSiteIcon, top);
+                }
             }
-
-            if (pointsCanvas.Children.IndexOf(TSpawnIcon) == -1)
-                pointsCanvas.Children.Add(TSpawnIcon);
-
-            Canvas.SetLeft(TSpawnIcon, this.loadedMap.TSpawnMultiplierX * this.mapImage.ActualWidth - (TSpawnIcon.ActualWidth / 2));
-            Canvas.SetTop(TSpawnIcon, this.loadedMap.TSpawnMultiplierY * this.mapImage.ActualWidth - (TSpawnIcon.ActualHeight / 2));
-
-            // Bomb A Icon
-            if (this.ASiteIcon == null)
-            {
-                this.ASiteIcon = new Image();
-                this.ASiteIcon.Source = new BitmapImage(new Uri("icon_a_site.png", UriKind.RelativeOrAbsolute));
-                this.ASiteIcon.Width = 25;
-                this.ASiteIcon.Height = 25;
-                this.ASiteIcon.Opacity = 0.6;
-                this.ASiteIcon.IsHitTestVisible = false;
-            }
-
-            if (pointsCanvas.Children.IndexOf(ASiteIcon) == -1)
-                pointsCanvas.Children.Add(ASiteIcon);
-
-            Canvas.SetLeft(ASiteIcon, this.loadedMap.BombAX * this.mapImage.ActualWidth - (ASiteIcon.ActualWidth / 2));
-            Canvas.SetTop(ASiteIcon, this.loadedMap.BombAY * this.mapImage.ActualWidth - (ASiteIcon.ActualHeight / 2));
-
-            // Bomb B Icon
-            if (this.BSiteIcon == null)
-            {
-                this.BSiteIcon = new Image();
-                this.BSiteIcon.Source = new BitmapImage(new Uri("icon_b_site.png", UriKind.RelativeOrAbsolute));
-                this.BSiteIcon.Width = 25;
-                this.BSiteIcon.Height = 25;
-                this.BSiteIcon.Opacity = 0.6;
-                this.BSiteIcon.IsHitTestVisible = false;
-            }
-
-            if (pointsCanvas.Children.IndexOf(BSiteIcon) == -1)
-                pointsCanvas.Children.Add(BSiteIcon);
-
-            Canvas.SetLeft(BSiteIcon, this.loadedMap.BombBX * this.mapImage.ActualWidth - (BSiteIcon.ActualWidth / 2));
-            Canvas.SetTop(BSiteIcon, this.loadedMap.BombBY * this.mapImage.ActualWidth - (BSiteIcon.ActualHeight / 2));
         }
 
         private double calculateDotDistanceInUnits()
@@ -588,6 +790,13 @@ namespace Damage_Calculator
         }
 
         #region events
+
+        private void visibilityMenu_CheckChanged(object sender, RoutedEventArgs e)
+        {
+            this.resetCanvas();
+            this.UpdateLayout();
+        }
+
         private void radioModeShooting_Checked(object sender, RoutedEventArgs e)
         {
             this.resetCanvas();
@@ -728,11 +937,18 @@ namespace Damage_Calculator
             settings_Updated(null, null);
         }
 
-        private void mnuHelp_Click(object sender, RoutedEventArgs e)
+        private void mnuAbout_Click(object sender, RoutedEventArgs e)
         {
             About about = new About();
             about.Owner = this;
             about.ShowDialog();
+        }
+
+        private void mnuHelp_Click(object sender, RoutedEventArgs e)
+        {
+            Help help = new Help();
+            help.Owner = this;
+            help.ShowDialog();
         }
 
         private void Window_MouseMove(object sender, MouseEventArgs e)

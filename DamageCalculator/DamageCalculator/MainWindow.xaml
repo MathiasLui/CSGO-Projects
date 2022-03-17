@@ -5,21 +5,30 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Damage_Calculator"
         mc:Ignorable="d"
-        Title="CS:GO Damage Calculator" Height="566" Width="826" MinHeight="560" MinWidth="690"
+        Title="CS:GO Damage Calculator" Height="566" Width="826" MinHeight="700" MinWidth="700"
         Style="{DynamicResource CustomWindowStyle}"
         WindowStartupLocation="CenterScreen" Icon="27.ico"
+        WindowState="Maximized"
         MouseMove="Window_MouseMove"
         KeyDown="Window_KeyDown">
     <Grid>
         <Menu>
             <MenuItem Header="View">
+                <MenuItem x:Name="mnuShowBombSites" StaysOpenOnClick="True" Header="Show bomb sites" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowSpawnAreas" StaysOpenOnClick="True" Header="Show spawn areas" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowStandardSpawns" StaysOpenOnClick="True" Header="Show standard spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShow2v2Spawns" StaysOpenOnClick="True" Header="Show 2v2 spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
+                <MenuItem x:Name="mnuAllowNonPrioritySpawns" StaysOpenOnClick="True" Header="Allow non-priority spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowDrawnMarkers" StaysOpenOnClick="True" Header="Show drawn markers" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
+                <Separator />
                 <MenuItem Header="Themes">
                     <MenuItem Header="Dark" Uid="0" Click="changeTheme_Click" />
                     <MenuItem Header="Flashbang" Uid="1" Click="changeTheme_Click" />
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="Help">
-                <MenuItem x:Name="mnuHelp" Header="About..." Uid="0" Click="mnuHelp_Click" />
+                <MenuItem x:Name="mnuAbout" Header="About..." Uid="0" Click="mnuAbout_Click" />
+                <MenuItem x:Name="mnuHelp" Header="Help..." Uid="0" Click="mnuHelp_Click" />
             </MenuItem>
         </Menu>
         <Grid>
@@ -28,7 +37,7 @@
                 <RowDefinition />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="150" />
+                <ColumnDefinition Width="160" />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Grid.Column="1" Margin="0,0,0,5">
@@ -81,21 +90,39 @@
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
-            <StackPanel VerticalAlignment="Bottom" Grid.Row="1" Margin="10,0,0,10">
-                <TextBlock Text="Cursor position:" />
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="X:" />
-                    <TextBlock x:Name="txtCursorX" Text="0" Margin="10,0,0,0" />
+            <GroupBox Header="Info" VerticalAlignment="Bottom" Grid.Row="1" Margin="10,0,0,10">
+                <StackPanel>
+                    <StackPanel>
+                        <CheckBox x:Name="chkHasMapFile" Content="Has map file" IsEnabled="False" />
+                        <CheckBox x:Name="chkHasNavFile" Content="Has nav file" IsEnabled="False" />
+                        <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                            <TextBlock Text="Max bomb damage:" />
+                            <TextBlock Margin="5,0,0,0" x:Name="txtBombMaxDamage" Text="0" Foreground="IndianRed" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Bomb radius:" />
+                            <TextBlock Margin="5,0,0,0" x:Name="txtBombRadius" Text="0" Foreground="IndianRed" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Margin="0,10,0,0">
+                        <TextBlock Text="Cursor position:" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="X:" />
+                            <TextBlock x:Name="txtCursorX" Text="0" Margin="10,0,0,0" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Y:" />
+                            <TextBlock x:Name="txtCursorY" Text="0" Margin="10,0,0,0" />
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Y:" />
-                    <TextBlock x:Name="txtCursorY" Text="0" Margin="10,0,0,0" />
-                </StackPanel>
-            </StackPanel>
-            <Grid x:Name="rightGrid" Grid.Row="1" Grid.Column="1" Margin="10">
-                <Image x:Name="mapImage" MouseLeftButtonUp="mapImage_MouseLeftButtonUp" HorizontalAlignment="Center" VerticalAlignment="Center" MouseRightButtonUp="mapImage_MouseRightButtonUp" LayoutUpdated="mapImage_LayoutUpdated" />
-                <Canvas x:Name="pointsCanvas" Width="{Binding ActualWidth, ElementName=mapImage, Mode=OneWay}" Height="{Binding ActualHeight, ElementName=mapImage, Mode=OneWay}" />
-            </Grid>
+            </GroupBox>
+            <Viewbox x:Name="rightViewbox" Grid.Row="1" Grid.Column="1" Margin="10">
+                <Grid>
+                    <Image x:Name="mapImage" MouseLeftButtonUp="mapImage_MouseLeftButtonUp" HorizontalAlignment="Center" VerticalAlignment="Center" MouseRightButtonUp="mapImage_MouseRightButtonUp" LayoutUpdated="mapImage_LayoutUpdated" />
+                    <Canvas x:Name="pointsCanvas" Width="{Binding ActualWidth, ElementName=mapImage, Mode=OneWay}" Height="{Binding ActualHeight, ElementName=mapImage, Mode=OneWay}" />
+                </Grid>
+            </Viewbox>
         </Grid>
         <Grid x:Name="gridLoading" Background="#B2000000" Visibility="Collapsed">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">

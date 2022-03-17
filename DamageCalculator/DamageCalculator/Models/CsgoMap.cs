@@ -122,5 +122,31 @@ namespace Damage_Calculator.Models
         /// Raw list of entities in this map, as stored in the BSP file.
         /// </summary>
         public string EntityList { get; set; }
+
+        public int AmountPrioritySpawnsCT { get; set; }
+
+        public int AmountSpawnsCT { get; set; }
+
+        public int AmountPrioritySpawnsT { get; set; }
+
+        public int AmountSpawnsT { get; set; }
+
+        public bool HasPrioritySpawnsT
+        {
+            get
+            {
+                return this.AmountPrioritySpawnsT < this.AmountSpawnsT;
+            }
+        }
+
+        public bool HasPrioritySpawnsCT
+        {
+            get
+            {
+                return this.AmountPrioritySpawnsCT < this.AmountSpawnsCT;
+            }
+        }
+
+        public List<PlayerSpawn> SpawnPoints { get; set; } = new List<PlayerSpawn>();
     }
 }

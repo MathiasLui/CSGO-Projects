@@ -66,16 +66,24 @@
       <DependentUpon>About.xaml</DependentUpon>
     </Compile>
     <Compile Include="CsgoHelper.cs" />
+    <Compile Include="ctrlPlayerSpawn.xaml.cs">
+      <DependentUpon>ctrlPlayerSpawn.xaml</DependentUpon>
+    </Compile>
     <Compile Include="DDSImageParser.cs" />
     <Compile Include="Globals.cs" />
+    <Compile Include="Help.xaml.cs">
+      <DependentUpon>Help.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Models\BSPHeader.cs" />
     <Compile Include="Models\BSPLump.cs" />
     <Compile Include="Models\CsgoWeapon.cs" />
     <Compile Include="Models\CsgoMap.cs" />
     <Compile Include="Models\MapPoint.cs" />
+    <Compile Include="Models\PlayerSpawn.cs" />
     <Compile Include="Models\Settings.cs" />
     <Compile Include="Models\SteamGame.cs" />
     <Compile Include="Models\SteamLibrary.cs" />
+    <Compile Include="Models\Vector3.cs" />
     <Compile Include="Serializer.cs" />
     <Compile Include="SteamHelper.cs" />
     <Compile Include="Themes\ColourfulDarkTheme.xaml.cs" />
@@ -87,6 +95,14 @@
     <Compile Include="ZatVdfParser\Element.cs" />
     <Compile Include="ZatVdfParser\VdfFile.cs" />
     <Page Include="About.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="ctrlPlayerSpawn.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Help.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

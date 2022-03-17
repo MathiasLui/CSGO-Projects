@@ -195,20 +195,23 @@ namespace Damage_Calculator
         }
         #endregion
 
-        private void resetCanvas()
+        private void resetCanvas(bool updatedViewSettings = false)
         {
             if (this.IsInitialized)
             {
                 this.pointsCanvas.Children.Clear();
-                this.leftPoint = null;
-                this.rightPoint = null;
-                this.connectingLine = null;
-                this.bombCircle = null;
-                this.unitsDistance = -1;
-                this.textDistanceMetres.Text = "0";
-                this.textDistanceUnits.Text = "0";
-                this.txtResult.Text = "0";
-                this.txtResultArmor.Text = "0";
+                if (!updatedViewSettings)
+                {
+                    this.leftPoint = null;
+                    this.rightPoint = null;
+                    this.connectingLine = null;
+                    this.bombCircle = null;
+                    this.unitsDistance = -1;
+                    this.textDistanceMetres.Text = "0";
+                    this.textDistanceUnits.Text = "0";
+                    this.txtResult.Text = "0";
+                    this.txtResultArmor.Text = "0";
+                }
             }
         }
 
@@ -465,6 +468,9 @@ namespace Damage_Calculator
 
             if (this.leftPoint?.Circle != null)
             {
+                if (pointsCanvas.Children.IndexOf(this.leftPoint.Circle) == -1 && this.mnuShowDrawnMarkers.IsChecked == true)
+                    pointsCanvas.Children.Add(this.leftPoint.Circle);
+
                 Canvas.SetLeft(this.leftPoint.Circle, (this.leftPoint.PercentageX * pointsCanvas.ActualWidth / 100f) - (this.leftPoint.Circle.Width / 2));
                 Canvas.SetTop(this.leftPoint.Circle, (this.leftPoint.PercentageY * pointsCanvas.ActualHeight / 100f) - (this.leftPoint.Circle.Height / 2));
                 this.leftPoint.Circle.Width = this.leftPoint.Circle.Height = this.leftPoint.PercentageScale * this.pointsCanvas.ActualWidth / 100f;
@@ -472,6 +478,9 @@ namespace Damage_Calculator
 
             if (this.rightPoint?.Circle != null)
             {
+                if (pointsCanvas.Children.IndexOf(this.rightPoint.Circle) == -1 && this.mnuShowDrawnMarkers.IsChecked == true)
+                    pointsCanvas.Children.Add(this.rightPoint.Circle);
+
                 Canvas.SetLeft(this.rightPoint.Circle, (this.rightPoint.PercentageX * pointsCanvas.ActualWidth / 100f) - (this.rightPoint.Circle.Width / 2));
                 Canvas.SetTop(this.rightPoint.Circle, (this.rightPoint.PercentageY * pointsCanvas.ActualHeight / 100f) - (this.rightPoint.Circle.Height / 2));
                 this.rightPoint.Circle.Width = this.rightPoint.Circle.Height = this.rightPoint.PercentageScale * this.pointsCanvas.ActualWidth / 100f;
@@ -479,6 +488,9 @@ namespace Damage_Calculator
 
             if (this.bombCircle?.Circle != null)
             {
+                if (pointsCanvas.Children.IndexOf(this.bombCircle.Circle) == -1 && this.mnuShowDrawnMarkers.IsChecked == true)
+                    pointsCanvas.Children.Add(this.bombCircle.Circle);
+
                 Canvas.SetLeft(this.bombCircle.Circle, (this.bombCircle.PercentageX * pointsCanvas.ActualWidth / 100f) - (this.bombCircle.Circle.Width / 2));
                 Canvas.SetTop(this.bombCircle.Circle, (this.bombCircle.PercentageY * pointsCanvas.ActualHeight / 100f) - (this.bombCircle.Circle.Height / 2));
                 this.bombCircle.Circle.Width = this.bombCircle.Circle.Height = this.bombCircle.PercentageScale * this.pointsCanvas.ActualWidth / 100f;
@@ -511,7 +523,7 @@ namespace Damage_Calculator
                 this.connectingLine.IsHitTestVisible = false;
 
                 int indexLine = pointsCanvas.Children.IndexOf(this.connectingLine);
-                if (indexLine < 0)
+                if (indexLine < 0 && this.mnuShowDrawnMarkers.IsChecked == true)
                 {
                     pointsCanvas.Children.Add(this.connectingLine);
                     this.lineDrawn = true;
@@ -676,13 +688,11 @@ namespace Damage_Calculator
 
         private double calculateDotDistanceInUnits()
         {
-            Ellipse circleLeft = pointsCanvas.Children[pointsCanvas.Children.IndexOf(this.DrawMode == eDrawMode.Shooting ? this.leftPoint.Circle : this.bombCircle.Circle)] as Ellipse;
-            double leftX = Canvas.GetLeft(circleLeft) + circleLeft.ActualWidth / 2;
-            double leftY = Canvas.GetTop(circleLeft) + circleLeft.ActualHeight / 2;
+            double leftX = this.connectingLine.X1;
+            double leftY = this.connectingLine.Y1;
 
-            Ellipse circleRight = pointsCanvas.Children[pointsCanvas.Children.IndexOf(rightPoint.Circle)] as Ellipse;
-            double rightX = Canvas.GetLeft(circleRight) + circleRight.ActualWidth / 2;
-            double rightY = Canvas.GetTop(circleRight) + circleRight.ActualHeight / 2;
+            double rightX = this.connectingLine.X2;
+            double rightY = this.connectingLine.Y2;
 
             // Distance in shown pixels
             double diffPixels = Math.Sqrt(Math.Pow(Math.Abs(leftX - rightX), 2) + Math.Pow(Math.Abs(leftY - rightY), 2));
@@ -815,10 +825,25 @@ namespace Damage_Calculator
         }
 
         #region events
+        private void rightZoomBorder_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (rightZoomBorder.IsZoomed)
+            {
+                rightZoomBorder.Reset();
+            }
+        }
+
+        private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Middle)
+            {
+                rightZoomBorder.Reset();
+            }
+        }
 
         private void visibilityMenu_CheckChanged(object sender, RoutedEventArgs e)
         {
-            this.resetCanvas();
+            this.resetCanvas(true);
             this.UpdateLayout();
         }
 
@@ -1022,18 +1047,6 @@ namespace Damage_Calculator
             this.rightZoomBorder.KeyUp(sender, e);
         }
         #endregion
-
-        private void rightZoomBorder_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            if(rightZoomBorder.Width < rightZoomBorder.Height)
-            {
-                rightZoomBorder.Height = rightZoomBorder.ActualWidth;
-            }
-            if (rightZoomBorder.IsZoomed)
-            {
-                rightZoomBorder.Reset();
-            }
-        }
     }
 
     enum eDrawMode { Shooting, Bomb }

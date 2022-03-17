@@ -54,8 +54,6 @@ namespace Damage_Calculator
                 this.MouseLeftButtonDown += child_MouseLeftButtonDown;
                 this.MouseLeftButtonUp += child_MouseLeftButtonUp;
                 this.MouseMove += child_MouseMove;
-                this.PreviewMouseDown += new MouseButtonEventHandler(
-                  child_PreviewMouseDown);
             }
         }
 
@@ -144,14 +142,6 @@ namespace Damage_Calculator
             {
                 child.ReleaseMouseCapture();
                 this.Cursor = Cursors.Arrow;
-            }
-        }
-
-        void child_PreviewMouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Middle && e.ButtonState == MouseButtonState.Pressed)
-            {
-                this.Reset();
             }
         }
 

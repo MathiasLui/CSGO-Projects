@@ -11,7 +11,8 @@
         WindowState="Maximized"
         MouseMove="Window_MouseMove"
         KeyDown="Window_KeyDown"
-        KeyUp="Window_KeyUp">
+        KeyUp="Window_KeyUp"
+        PreviewMouseDown="Window_PreviewMouseDown">
     <Grid>
         <Menu>
             <MenuItem Header="View">
@@ -120,10 +121,12 @@
                 </StackPanel>
             </GroupBox>
             <local:ZoomBorder x:Name="rightZoomBorder" Grid.Row="1" Grid.Column="1" Margin="10" ClipToBounds="True" SizeChanged="rightZoomBorder_SizeChanged">
-                <Grid>
-                    <Image x:Name="mapImage" MouseLeftButtonUp="mapImage_MouseLeftButtonUp" HorizontalAlignment="Center" VerticalAlignment="Center" MouseRightButtonUp="mapImage_MouseRightButtonUp" LayoutUpdated="mapImage_LayoutUpdated" />
-                    <Canvas x:Name="pointsCanvas" Width="{Binding ActualWidth, ElementName=mapImage, Mode=OneWay}" Height="{Binding ActualHeight, ElementName=mapImage, Mode=OneWay}" />
-                </Grid>
+                <Viewbox>
+                    <Grid>
+                        <Image x:Name="mapImage" MouseLeftButtonUp="mapImage_MouseLeftButtonUp" HorizontalAlignment="Center" VerticalAlignment="Center" MouseRightButtonUp="mapImage_MouseRightButtonUp" LayoutUpdated="mapImage_LayoutUpdated" />
+                        <Canvas x:Name="pointsCanvas" Width="{Binding ActualWidth, ElementName=mapImage, Mode=OneWay}" Height="{Binding ActualHeight, ElementName=mapImage, Mode=OneWay}" />
+                    </Grid>
+                </Viewbox>
             </local:ZoomBorder>
         </Grid>
         <Grid x:Name="gridLoading" Background="#B2000000" Visibility="Collapsed">

@@ -131,6 +131,8 @@ namespace Damage_Calculator.Models
 
         public int AmountSpawnsT { get; set; }
 
+        public int AmountHostages { get; set; }
+
         public bool HasPrioritySpawnsT
         {
             get

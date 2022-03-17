@@ -19,6 +19,7 @@
                 <MenuItem x:Name="mnuShowSpawnAreas" StaysOpenOnClick="True" Header="Show spawn areas" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
                 <MenuItem x:Name="mnuShowStandardSpawns" StaysOpenOnClick="True" Header="Show standard spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
                 <MenuItem x:Name="mnuShow2v2Spawns" StaysOpenOnClick="True" Header="Show 2v2 spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowHostageSpawns" StaysOpenOnClick="True" Header="Show hostage spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
                 <MenuItem x:Name="mnuAllowNonPrioritySpawns" StaysOpenOnClick="True" Header="Allow non-priority spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
                 <MenuItem x:Name="mnuShowDrawnMarkers" StaysOpenOnClick="True" Header="Show drawn markers" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
                 <Separator />

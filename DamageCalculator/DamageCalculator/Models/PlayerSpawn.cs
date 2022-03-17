@@ -30,12 +30,27 @@ namespace Damage_Calculator.Models
         public Vector3 Angles { get; set; }
 
         /// <summary>
-        /// The type of spawn (standard, 2v2, ...)
+        /// The type of spawn (standard, 2v2, hostage, ...)
         /// </summary>
         public eSpawnType Type { get; set; }
     }
 
     public enum ePlayerTeam { Terrorist, CounterTerrorist }
 
-    public enum eSpawnType { Standard, Wingman }
+    public enum eSpawnType 
+    { 
+        /// <summary>
+        /// Standard spawnpoints, also including all types that are not separate otherwise.
+        /// </summary>
+        Standard, 
+
+        /// <summary>
+        /// A 2v2 spawn.
+        /// </summary>
+        Wingman, 
+
+        /// <summary>
+        /// A hostage spawn.
+        /// </summary>
+        Hostage }
 }

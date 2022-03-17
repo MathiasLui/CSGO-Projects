@@ -334,6 +334,21 @@ namespace Damage_Calculator
 
                     map.SpawnPoints.Add(spawn);
                 }
+
+                if (className == "info_hostage_spawn" || className == "hostage_entity")
+                {
+                    // Entity is hostage spawn point (equivalent but latter is csgo specific)
+                    var spawn = new PlayerSpawn();
+                    spawn.Origin = this.stringToVector3(entityRootVdf["origin"]?.Value) ?? Vector3.Empty;
+                    spawn.Angles = this.stringToVector3(entityRootVdf["angles"]?.Value) ?? Vector3.Empty;
+
+                    // Count all hostage spawns
+                    map.AmountHostages++;
+
+                    spawn.Type = eSpawnType.Hostage;
+
+                    map.SpawnPoints.Add(spawn);
+                }
             }
         }
 
@@ -419,9 +434,15 @@ namespace Damage_Calculator
             spawnBlip.SetColour(blipColour);
             Color colourPriority = Color.FromArgb(150, 200, 200, 0);
             Color colourNoPriority = Color.FromArgb(150, 20, 20, 0);
+            Color colourHostage = Color.FromArgb(150, 255, 0, 0);
 
+            if(spawn.Type == eSpawnType.Hostage)
+            {
+                // This is a hostage, so fill it red
+                spawnBlip.SetEllipseFill(colourHostage);
+            }
             // If all are priority spawns, just mark all of them as low prio, for consistency
-            if (spawn.Team == ePlayerTeam.Terrorist && this.loadedMap.HasPrioritySpawnsT || spawn.Team == ePlayerTeam.CounterTerrorist && this.loadedMap.HasPrioritySpawnsCT)
+            else if (spawn.Team == ePlayerTeam.Terrorist && this.loadedMap.HasPrioritySpawnsT || spawn.Team == ePlayerTeam.CounterTerrorist && this.loadedMap.HasPrioritySpawnsCT)
             {
                 // This team has at least 1 priority spawn, so only colour the priority ones bright
                 spawnBlip.SetEllipseFill(spawn.IsPriority ? colourPriority : colourNoPriority);
@@ -530,12 +551,15 @@ namespace Damage_Calculator
                     continue;
                 else if (spawn.Type == eSpawnType.Wingman && mnuShow2v2Spawns.IsChecked == false)
                     continue;
+                else if (spawn.Type == eSpawnType.Hostage && mnuShowHostageSpawns.IsChecked == false)
+                    continue;
 
                 var existingViewBox = this.pointsCanvas.Children.OfType<Viewbox>().FirstOrDefault(v => v.Tag == spawn);
                 if (existingViewBox == null)
                 {
                     Viewbox box = new Viewbox();
 
+                    // Are viewboxes even needed?
                     var blipControl = this.getSpawnBlip(spawn);
                     box.Tag = spawn;
                     box.Child = blipControl;

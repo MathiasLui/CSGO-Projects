@@ -1043,14 +1043,20 @@ namespace Damage_Calculator
 
             // Pass it on for spacebar pan start
             this.rightZoomBorder.KeyDown(sender, e);
-            e.Handled = true;
+
+            if(e.Key == Key.Space)
+                // We want space for us alone, so give no child element a piece of dat cake
+                e.Handled = true;
         }
 
         private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
         {
             // Pass it on for spacebar pan stop
             this.rightZoomBorder.KeyUp(sender, e);
-            e.Handled = true;
+
+            if (e.Key == Key.Space)
+                // We want space for us alone, so give no child element a piece of dat cake
+                e.Handled = true;
         }
         #endregion
     }

@@ -131,7 +131,6 @@ namespace Damage_Calculator
                 var tt = GetTranslateTransform(child);
                 start = e.GetPosition(this);
                 origin = new Point(tt.X, tt.Y);
-                this.Cursor = Cursors.Hand;
                 child.CaptureMouse();
             }
         }
@@ -139,10 +138,7 @@ namespace Damage_Calculator
         private void child_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (child != null)
-            {
                 child.ReleaseMouseCapture();
-                this.Cursor = Cursors.Arrow;
-            }
         }
 
         private void child_MouseMove(object sender, MouseEventArgs e)

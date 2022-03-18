@@ -1034,7 +1034,7 @@ namespace Damage_Calculator
                 txtCursorX.Text = txtCursorY.Text = "0";
             }
         }
-        private void Window_KeyDown(object sender, KeyEventArgs e)
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
             {
@@ -1043,12 +1043,14 @@ namespace Damage_Calculator
 
             // Pass it on for spacebar pan start
             this.rightZoomBorder.KeyDown(sender, e);
+            e.Handled = true;
         }
 
-        private void Window_KeyUp(object sender, KeyEventArgs e)
+        private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
         {
             // Pass it on for spacebar pan stop
             this.rightZoomBorder.KeyUp(sender, e);
+            e.Handled = true;
         }
         #endregion
     }

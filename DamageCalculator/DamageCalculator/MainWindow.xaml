@@ -10,8 +10,8 @@
         WindowStartupLocation="CenterScreen" Icon="27.ico"
         WindowState="Maximized"
         MouseMove="Window_MouseMove"
-        KeyDown="Window_KeyDown"
-        KeyUp="Window_KeyUp"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        PreviewKeyUp="Window_PreviewKeyUp"
         PreviewMouseDown="Window_PreviewMouseDown">
     <Grid>
         <Menu>

@@ -13,7 +13,7 @@
             <StackPanel>
                 <StackPanel>
                     <TextBlock Text="Map selection" FontSize="24" Foreground="#FF0093E0" />
-                    <TextBlock FontSize="16" Text="On the top you can select one of the maps that is available. Only the maps prefixed with 'de', 'cs', 'dz' and 'ar' are loaded. They are shown if they have a radar file and a corresponding text file, and could be successfully converted from DDS. You can also type when you open the combobox, to quickly find a map." Margin="0,5,0,0" TextWrapping="Wrap" />
+                    <TextBlock FontSize="16" Text="On the top you can select one of the maps that is available. Only the maps prefixed with 'de', 'cs', 'dz' and 'ar' are loaded. You can alter which of these are shown via the 'Map Filter' menu (Maps might not correspond with what you expect, for example the map 'Safehouse' starts with 'de_' and is thus treated like a defusal map.) The maps are loaded, if they have a radar file and a corresponding text file, and could be successfully converted from DDS. You can also type when you open the combobox, to quickly find a map." Margin="0,5,0,0" TextWrapping="Wrap" />
                 </StackPanel>
                 <StackPanel Margin="0,10,0,0">
                     <TextBlock Text="Sidebar" FontSize="24" Foreground="#FF0093E0" />

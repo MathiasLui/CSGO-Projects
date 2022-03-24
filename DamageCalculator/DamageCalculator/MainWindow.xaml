@@ -29,6 +29,15 @@
                     <MenuItem Header="Flashbang" Uid="1" Click="changeTheme_Click" />
                 </MenuItem>
             </MenuItem>
+            <MenuItem Header="Map Filter">
+                <MenuItem x:Name="mnuShowDefusalMaps" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show defusal maps" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowHostageMaps" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show hostage maps" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowArmsRaceMaps" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show arms race maps" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowDangerZoneMaps" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show danger zone maps" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowMapsMissingBsp" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show maps with missing map file" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowMapsMissingNav" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show maps with missing NAV file" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
+                <MenuItem x:Name="mnuShowMapsMissingAin" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show maps with missing AIN file" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
+            </MenuItem>
             <MenuItem Header="Help">
                 <MenuItem x:Name="mnuAbout" Header="About..." Uid="0" Click="mnuAbout_Click" />
                 <MenuItem x:Name="mnuHelp" Header="Help..." Uid="0" Click="mnuHelp_Click" />

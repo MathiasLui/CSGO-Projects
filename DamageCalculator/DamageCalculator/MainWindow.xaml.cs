@@ -59,6 +59,7 @@ namespace Damage_Calculator
         private CsgoWeapon selectedWeapon;
 
         private BackgroundWorker bgWorker = new BackgroundWorker();
+        private List<ComboBoxItem> allMaps;
 
         private bool lineDrawn = false;
 
@@ -100,6 +101,7 @@ namespace Damage_Calculator
                     maps.Add(item);
                 }
 
+                this.allMaps = maps;
                 this.comboBoxMaps.ItemsSource = maps.OrderBy(m => m.Content);
                 if (maps.Count > 0)
                     this.comboBoxMaps.SelectedIndex = 0;
@@ -135,6 +137,49 @@ namespace Damage_Calculator
                     return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
                 }
             }
+        }
+
+        private void updateMapsWithCurrentFilter()
+        {
+            if (!this.IsInitialized)
+                return;
+
+            // Add maps
+            var newMaps = new List<ComboBoxItem>();
+
+            foreach (var mapItem in this.allMaps)
+            {
+                var newMap = new ComboBoxItem();
+                var map = (CsgoMap)mapItem.Tag;
+
+                string mapNameWithPrefix = System.IO.Path.GetFileNameWithoutExtension(map.MapImagePath).ToLower();
+                
+                // Filter map type
+                if (mapNameWithPrefix.StartsWith("de") && mnuShowDefusalMaps.IsChecked == false)
+                    continue;
+                if (mapNameWithPrefix.StartsWith("cs") && mnuShowHostageMaps.IsChecked == false)
+                    continue;
+                if (mapNameWithPrefix.StartsWith("ar") && mnuShowArmsRaceMaps.IsChecked == false)
+                    continue;
+                if (mapNameWithPrefix.StartsWith("dz") && mnuShowDangerZoneMaps.IsChecked == false)
+                    continue;
+
+                // Filter file existence
+                if (map.BspFilePath == null && mnuShowMapsMissingBsp.IsChecked == false)
+                    continue;
+                if (map.NavFilePath == null && mnuShowMapsMissingNav.IsChecked == false)
+                    continue;
+                if (map.AinFilePath == null && mnuShowMapsMissingAin.IsChecked == false)
+                    continue;
+
+                newMap.Tag = map;
+                newMap.Content = map.MapFileName;
+                newMaps.Add(newMap);
+            }
+
+            this.comboBoxMaps.ItemsSource = newMaps.OrderBy(m => m.Content);
+            if (newMaps.Count > 0)
+                this.comboBoxMaps.SelectedIndex = 0;
         }
 
         private void BgWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -1079,6 +1124,10 @@ namespace Damage_Calculator
             if (e.Key == Key.Space)
                 // We want space for us alone, so give no child element a piece of dat cake
                 e.Handled = true;
+        }
+        private void filterMenu_CheckChanged(object sender, RoutedEventArgs e)
+        {
+            this.updateMapsWithCurrentFilter();
         }
         #endregion
     }

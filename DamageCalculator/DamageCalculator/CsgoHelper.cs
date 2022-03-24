@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -113,6 +114,13 @@ namespace Damage_Calculator
                 if (File.Exists(potentialNavFile))
                 {
                     map.NavFilePath = potentialNavFile;
+                }
+
+                // Save path to AIN file if available
+                string potentialAinFile = System.IO.Path.Combine(this.CsgoPath, "csgo\\maps\\graphs", System.IO.Path.GetFileNameWithoutExtension(file) + ".ain");
+                if (File.Exists(potentialAinFile))
+                {
+                    map.AinFilePath = potentialAinFile;
                 }
 
                 // Set map type
@@ -407,6 +415,59 @@ namespace Damage_Calculator
                 }
             }
             return null;
+        }
+
+        /// <summary>
+        /// Reads packed files from a BSP and returns whether any 1. NAV or 2. AIN files were found.
+        /// </summary>
+        /// <param name="bspFilePath">The absolute path to the BSP file.</param>
+        /// <returns>A tuple containing whether nav or ain files were found, in that order.</returns>
+        public (bool, bool) ReadIfPackedNavFilesInBsp(string bspFilePath)
+        {
+            bool navFound = false;
+            bool ainFound = false;
+            byte[] readZipBytes = null;
+
+            using (var bspFile = File.OpenRead(bspFilePath))
+            {
+                using (var reader = new BinaryReader(bspFile))
+                {
+                    // Stuff before lumps + pakfile index * lump array item length
+                    reader.BaseStream.Position = 8 + (40 * 16);
+
+                    // Get lump pos and size
+                    int offset = reader.ReadInt32();
+                    int length = reader.ReadInt32();
+
+                    // Read zip file
+                    reader.BaseStream.Position = offset;
+                    readZipBytes = reader.ReadBytes(length);
+                }
+            }
+
+            if (readZipBytes == null)
+                return (false, false);
+
+            using (var stream = new MemoryStream(readZipBytes))
+            {
+                using(var zip = new ZipArchive(stream, ZipArchiveMode.Read))
+                {
+                    foreach(var entry in zip.Entries)
+                    {
+                        if (entry.FullName.EndsWith(".nav"))
+                            // Found a packed NAV file
+                            navFound = true;
+                        if(entry.FullName.EndsWith(".ain"))
+                            // Found a packed AIN file
+                            ainFound = true;
+
+                        if (navFound && ainFound)
+                            // If both already found, return prematurely
+                            return (true, true);
+                    }
+                    return (navFound, ainFound);
+                }
+            }
         }
 
         private bool isLumpUnused(byte[] lump)

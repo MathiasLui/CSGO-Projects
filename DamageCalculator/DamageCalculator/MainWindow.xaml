@@ -97,7 +97,14 @@
                 <StackPanel>
                     <StackPanel>
                         <CheckBox x:Name="chkHasMapFile" Content="Has map file" IsEnabled="False" />
-                        <CheckBox x:Name="chkHasNavFile" Content="Has nav file" IsEnabled="False" />
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="chkHasNavFile" Content="Has NAV file" IsEnabled="False" />
+                            <TextBlock x:Name="txtNavFilePacked" FontSize="10" Margin="5,0,0,0" Text="(Packed)" Visibility="Collapsed" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="chkHasAinFile" Content="Has AIN file" IsEnabled="False" />
+                            <TextBlock x:Name="txtAinFilePacked" FontSize="10" Margin="5,0,0,0" Text="(Packed)" Visibility="Collapsed" />
+                        </StackPanel>
                         <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
                             <TextBlock Text="Max bomb damage:" />
                             <TextBlock Margin="5,0,0,0" x:Name="txtBombMaxDamage" Text="0" Foreground="IndianRed" />

@@ -227,7 +227,13 @@ namespace Damage_Calculator
 
             // Set indicator checkboxes
             this.chkHasMapFile.IsChecked = map.BspFilePath != null;
+
             this.chkHasNavFile.IsChecked = map.NavFilePath != null;
+            this.chkHasAinFile.IsChecked = map.AinFilePath != null;
+
+            // Set packed indicators for indicator checkboxes
+            this.txtNavFilePacked.Visibility = map.NavFileBspPacked ? Visibility.Visible : Visibility.Collapsed;
+            this.txtAinFilePacked.Visibility = map.AinFileBspPacked ? Visibility.Visible : Visibility.Collapsed;
 
             this.resetCanvas();
             this.rightZoomBorder.Reset();
@@ -352,6 +358,22 @@ namespace Damage_Calculator
                     spawn.Type = eSpawnType.Hostage;
 
                     map.SpawnPoints.Add(spawn);
+                }
+            }
+
+            if (map.NavFilePath == null || map.AinFilePath == null)
+            {
+                // If either no NAV or no AIN file has been found, try to update them via the BSP pakfile
+                var navFilesFound = Globals.Settings.CsgoHelper.ReadIfPackedNavFilesInBsp(map.BspFilePath);
+                if (navFilesFound.Item1)
+                {
+                    map.NavFileBspPacked = true;
+                    map.NavFilePath = "PACKED";
+                }
+                if (navFilesFound.Item2)
+                {
+                    map.AinFileBspPacked = true;
+                    map.AinFilePath = "PACKED";
                 }
             }
         }

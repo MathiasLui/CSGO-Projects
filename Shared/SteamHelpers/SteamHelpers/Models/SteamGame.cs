@@ -4,13 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Damage_Calculator.Models
+namespace Shared.Models
 {
     public class SteamGame
     {
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
-        public string InstallFolderName { get; set; }
+        public string? InstallFolderName { get; set; }
 
         public int AppId { get; set; }
 

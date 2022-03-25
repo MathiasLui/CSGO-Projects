@@ -7,9 +7,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 
-namespace Damage_Calculator
+namespace Shared
 {
-    static class Globals
+    public static class Globals
     {
         public static Models.Settings Settings = new Models.Settings();
 
@@ -37,7 +37,7 @@ namespace Damage_Calculator
             {
                 fixed (byte* p = &data[0]) // Fixed so GC doesn't move shit, point to the first element
                 {
-                    return (T)System.Runtime.InteropServices.Marshal.PtrToStructure(new IntPtr(p), typeof(T));
+                    return (T)System.Runtime.InteropServices.Marshal.PtrToStructure(new IntPtr(p), typeof(T))!;
                 }
             }
         }

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 
-namespace Damage_Calculator.Models
+namespace Shared.Models
 {
     public class CsgoWeapon
     {
@@ -14,7 +14,7 @@ namespace Damage_Calculator.Models
         /// Gets or sets the class name of this weapon.
         /// e.g. AK47 would be "weapon_ak47"
         /// </summary>
-        public string ClassName { get; set; }
+        public string? ClassName { get; set; }
 
         /// <summary>
         /// Gets or sets the base damage that the weapon deals, in health points.

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 
-namespace Damage_Calculator.ZatVdfParser
+namespace Shared.ZatVdfParser
 {
     /// <summary>
     /// This class was copied from <see cref="https://stackoverflow.com/questions/39065573/reading-values-from-an-acf-manifest-file">here</see> as a backup, in case <see cref="VDFFile"/> didn't work well enough.

@@ -11,8 +11,6 @@
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>27.ico</ApplicationIcon>
-    <FileVersion>1.2.0.0</FileVersion>
-    <AssemblyVersion>1.2.0.0</AssemblyVersion>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Properties\AssemblyInfo.cs" />

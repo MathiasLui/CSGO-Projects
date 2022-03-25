@@ -1,5 +1,5 @@
-﻿using Damage_Calculator.Models;
-using Damage_Calculator.ZatVdfParser;
+﻿using Shared.Models;
+using Shared.ZatVdfParser;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -9,11 +9,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Damage_Calculator
+namespace Shared
 {
     public class CsgoHelper
     {
-        public string CsgoPath { get; set; }
+        public string? CsgoPath { get; set; }
 
         /// <summary>
         /// Gets the prefixes allowed for maps when using <see cref="GetMaps"/>.
@@ -58,7 +58,7 @@ namespace Damage_Calculator
         /// <returns>whether the files and directories exist.</returns>
         public bool Validate()
         {
-            return this.Validate(this.CsgoPath);
+            return this.Validate(this.CsgoPath!);
         }
 
 
@@ -86,7 +86,7 @@ namespace Damage_Calculator
 
         public List<CsgoMap> GetMaps()
         {
-            List<string> mapTextFiles = Directory.GetFiles(System.IO.Path.Combine(this.CsgoPath, "csgo\\resource\\overviews")).ToList().Where(f => f.ToLower().EndsWith(".txt")).Where(f =>
+            List<string> mapTextFiles = Directory.GetFiles(System.IO.Path.Combine(this.CsgoPath!, "csgo\\resource\\overviews")).ToList().Where(f => f.ToLower().EndsWith(".txt")).Where(f =>
                 this.mapFileNameValid(f)).ToList();
 
             List<CsgoMap> maps = new List<CsgoMap>();
@@ -96,28 +96,28 @@ namespace Damage_Calculator
                 var map = new CsgoMap();
 
                 // Save path to radar file if available
-                string potentialRadarFile = System.IO.Path.Combine(this.CsgoPath, "csgo\\resource\\overviews", System.IO.Path.GetFileNameWithoutExtension(file) + "_radar.dds");
+                string potentialRadarFile = System.IO.Path.Combine(this.CsgoPath!, "csgo\\resource\\overviews", System.IO.Path.GetFileNameWithoutExtension(file) + "_radar.dds");
                 if (File.Exists(potentialRadarFile))
                 {
                     map.MapImagePath = potentialRadarFile;
                 }
 
                 // Save path to BSP file if available
-                string potentialBspFile = System.IO.Path.Combine(this.CsgoPath, "csgo\\maps", System.IO.Path.GetFileNameWithoutExtension(file) + ".bsp");
+                string potentialBspFile = System.IO.Path.Combine(this.CsgoPath!, "csgo\\maps", System.IO.Path.GetFileNameWithoutExtension(file) + ".bsp");
                 if (File.Exists(potentialBspFile))
                 {
                     map.BspFilePath = potentialBspFile;
                 }
 
                 // Save path to NAV file if available
-                string potentialNavFile = System.IO.Path.Combine(this.CsgoPath, "csgo\\maps", System.IO.Path.GetFileNameWithoutExtension(file) + ".nav");
+                string potentialNavFile = System.IO.Path.Combine(this.CsgoPath!, "csgo\\maps", System.IO.Path.GetFileNameWithoutExtension(file) + ".nav");
                 if (File.Exists(potentialNavFile))
                 {
                     map.NavFilePath = potentialNavFile;
                 }
 
                 // Save path to AIN file if available
-                string potentialAinFile = System.IO.Path.Combine(this.CsgoPath, "csgo\\maps\\graphs", System.IO.Path.GetFileNameWithoutExtension(file) + ".ain");
+                string potentialAinFile = System.IO.Path.Combine(this.CsgoPath!, "csgo\\maps\\graphs", System.IO.Path.GetFileNameWithoutExtension(file) + ".ain");
                 if (File.Exists(potentialAinFile))
                 {
                     map.AinFilePath = potentialAinFile;
@@ -201,7 +201,7 @@ namespace Damage_Calculator
                 try
                 {
                     // Read actual radar
-                    image = new DDSImage(System.IO.File.ReadAllBytes(map.MapImagePath));
+                    image = new DDSImage(System.IO.File.ReadAllBytes(map.MapImagePath!));
                 }
                 catch
                 {
@@ -226,25 +226,25 @@ namespace Damage_Calculator
 
         public List<CsgoWeapon> GetWeapons()
         {
-            string filePath = Path.Combine(this.CsgoPath, "csgo\\scripts\\items\\items_game.txt");
+            string filePath = Path.Combine(this.CsgoPath!, "csgo\\scripts\\items\\items_game.txt");
             if (!File.Exists(filePath))
-                return null;
+                return null!;
 
             var vdfItems = new VDFFile(filePath);
-            Element prefabs = vdfItems["items_game"]?["prefabs"];
-            Element items = vdfItems["items_game"]?["items"];
+            Element prefabs = vdfItems["items_game"]?["prefabs"]!;
+            Element items = vdfItems["items_game"]?["items"]!;
 
             if (prefabs == null || items == null)
-                return null;
+                return null!;
 
             var weapons = new List<CsgoWeapon>();
 
             foreach(var item in items.Children)
             {
-                string itemPrefab = item["prefab"]?.Value;
-                string itemName = item["name"].Value;
+                string? itemPrefab = item["prefab"]?.Value!;
+                string? itemName = item["name"].Value;
 
-                if (itemPrefab == null || !itemName.StartsWith("weapon_"))
+                if (itemPrefab == null || !itemName!.StartsWith("weapon_"))
                     continue;
 
                 var weapon = new CsgoWeapon();
@@ -259,7 +259,7 @@ namespace Damage_Calculator
             return weapons;
         }
 
-        private bool tryPopulateWeapon(CsgoWeapon weapon, Element prefabs, string prefabName, List<string> prefabTrace = null)
+        private bool tryPopulateWeapon(CsgoWeapon weapon, Element prefabs, string prefabName, List<string>? prefabTrace = null)
         {
             Element prefab = prefabs[prefabName];
 
@@ -267,7 +267,7 @@ namespace Damage_Calculator
                 // Prefab not existent (example was prefab named "valve csgo_tool")
                 return false;
 
-            string nextPrefab = prefab["prefab"]?.Value;
+            string nextPrefab = prefab["prefab"]?.Value!;
 
             if (prefab == null || (nextPrefab == null && prefabTrace?.FirstOrDefault(pr => pr == "primary" || pr == "secondary") == null))
                 // We've reached the end of abstraction but it wasn't found to be primary nor secondary
@@ -285,7 +285,7 @@ namespace Damage_Calculator
             // Base damage
             if (weapon.BaseDamage == -1) 
             {
-                string damage = attributes["damage"]?.Value;
+                string damage = attributes["damage"]?.Value!;
                 if (damage != null)
                 {
                     // damage field exists
@@ -301,7 +301,7 @@ namespace Damage_Calculator
             // Armor penetration
             if (weapon.ArmorPenetration == -1)
             {
-                string penetration = attributes["armor ratio"]?.Value;
+                string penetration = attributes["armor ratio"]?.Value!;
                 if (penetration != null)
                 {
                     // Armor penetration field exists
@@ -317,7 +317,7 @@ namespace Damage_Calculator
             // Damage dropoff
             if (weapon.DamageDropoff == -1)
             {
-                string dropoff = attributes["range modifier"]?.Value;
+                string dropoff = attributes["range modifier"]?.Value!;
                 if (dropoff != null)
                 {
                     // Damage dropoff field exists
@@ -333,7 +333,7 @@ namespace Damage_Calculator
             // Max range
             if (weapon.MaxBulletRange == -1)
             {
-                string maxrange = attributes["range"]?.Value;
+                string maxrange = attributes["range"]?.Value!;
                 if (maxrange != null)
                 {
                     // Max range field exists
@@ -349,7 +349,7 @@ namespace Damage_Calculator
             // Headshot modifier
             if (weapon.HeadshotModifier == -1)
             {
-                string headshotModifier = attributes["headshot multiplier"]?.Value;
+                string headshotModifier = attributes["headshot multiplier"]?.Value!;
                 if (headshotModifier != null)
                 {
                     // Headshot modifier field exists
@@ -370,7 +370,7 @@ namespace Damage_Calculator
             if (prefabTrace == null)
                 prefabTrace = new List<string>();
 
-            prefabTrace.Add(prefab.Name);
+            prefabTrace.Add(prefab.Name!);
 
             return this.tryPopulateWeapon(weapon, prefabs, nextPrefab, prefabTrace);
         }
@@ -414,7 +414,7 @@ namespace Damage_Calculator
                     }
                 }
             }
-            return null;
+            return null!;
         }
 
         /// <summary>
@@ -426,7 +426,7 @@ namespace Damage_Calculator
         {
             bool navFound = false;
             bool ainFound = false;
-            byte[] readZipBytes = null;
+            byte[] readZipBytes = null!;
 
             using (var bspFile = File.OpenRead(bspFilePath))
             {

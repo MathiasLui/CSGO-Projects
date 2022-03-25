@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Damage_Calculator.Models
+namespace Shared.Models
 {
     public class SteamLibrary
     {
@@ -25,7 +25,7 @@ namespace Damage_Calculator.Models
             this.DoesExist = doesExist;
         }
 
-        public string Path { get; set; }
+        public string? Path { get; set; }
 
         public bool DoesExist { get; set; }
     }

@@ -5,14 +5,14 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.IO;
 
-namespace Damage_Calculator
+namespace Shared
 {
     #region DDSImage Class
     public class DDSImage : IDisposable
     {
         #region Variables
         private bool m_isValid = false;
-        private System.Drawing.Bitmap m_bitmap = null;
+        private System.Drawing.Bitmap? m_bitmap = null;
         #endregion
 
         #region Constructor/Destructor
@@ -58,7 +58,7 @@ namespace Damage_Calculator
         {
             DDSStruct header = new DDSStruct();
             PixelFormat pixelFormat = PixelFormat.UNKNOWN;
-            byte[] data = null;
+            byte[]? data = null;
 
             if (this.ReadHeader(reader, ref header))
             {
@@ -84,7 +84,7 @@ namespace Damage_Calculator
 
         private byte[] ReadData(BinaryReader reader, DDSStruct header)
         {
-            byte[] compdata = null;
+            byte[]? compdata = null;
             uint compsize = 0;
 
             if ((header.flags & DDSD_LINEARSIZE) > 1)
@@ -620,7 +620,7 @@ namespace Damage_Calculator
         {
             System.Diagnostics.Debug.WriteLine(pixelFormat);
             // allocate bitmap
-            byte[] rawData = null;
+            byte[]? rawData = null;
 
             switch (pixelFormat)
             {
@@ -1767,7 +1767,7 @@ namespace Damage_Calculator
         /// </summary>
         public System.Drawing.Bitmap BitmapImage
         {
-            get { return this.m_bitmap; }
+            get { return this.m_bitmap!; }
         }
 
         /// <summary>

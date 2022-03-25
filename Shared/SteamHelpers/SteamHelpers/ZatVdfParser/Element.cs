@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Damage_Calculator.ZatVdfParser
+namespace Shared.ZatVdfParser
 {
     public class Element
     {
@@ -13,9 +13,9 @@ namespace Damage_Calculator.ZatVdfParser
 
         #region PROPERTIES
         public List<Element> Children { get; set; }
-        public Element Parent { get; set; }
-        public string Value { get; set; }
-        public string Name { get; set; }
+        public Element? Parent { get; set; }
+        public string? Value { get; set; }
+        public string? Name { get; set; }
         #endregion
 
         #region CONSTRUCTOR
@@ -38,7 +38,7 @@ namespace Damage_Calculator.ZatVdfParser
         {
             get
             {
-                return Children.FirstOrDefault(x => x.Name == key);
+                return Children.FirstOrDefault(x => x.Name == key)!;
             }
         }
         #endregion

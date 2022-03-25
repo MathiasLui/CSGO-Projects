@@ -14,8 +14,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using Damage_Calculator.Models;
-using Damage_Calculator.ZatVdfParser;
+using Shared.Models;
+using Shared.ZatVdfParser;
 using System.Xml.Serialization;
 using System.Globalization;
 
@@ -67,8 +67,8 @@ namespace Damage_Calculator
         {
             InitializeComponent();
 
-            Globals.Settings.CsgoHelper.CsgoPath = Globals.Settings.SteamHelper.GetGamePathFromExactName("Counter-Strike: Global Offensive");
-            if (Globals.Settings.CsgoHelper.CsgoPath == null)
+            Shared.Globals.Settings.CsgoHelper.CsgoPath = Shared.Globals.Settings.SteamHelper.GetGamePathFromExactName("Counter-Strike: Global Offensive");
+            if (Shared.Globals.Settings.CsgoHelper.CsgoPath == null)
             {
                 MessageBox.Show("Make sure you have installed CS:GO and Steam correctly.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 this.Close();
@@ -81,6 +81,61 @@ namespace Damage_Calculator
 
             this.gridLoading.Visibility = Visibility.Visible;
             bgWorker.RunWorkerAsync();
+        }
+
+        private static string calculateMD5(string filename)
+        {
+            using (var md5 = System.Security.Cryptography.MD5.Create())
+            {
+                using (var stream = File.OpenRead(filename))
+                {
+                    var hash = md5.ComputeHash(stream);
+                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                }
+            }
+        }
+
+        private void updateMapsWithCurrentFilter()
+        {
+            if (!this.IsInitialized)
+                return;
+
+            // Add maps
+            var newMaps = new List<ComboBoxItem>();
+
+            foreach (var mapItem in this.allMaps)
+            {
+                var newMap = new ComboBoxItem();
+                var map = (CsgoMap)mapItem.Tag;
+
+                string mapNameWithPrefix = System.IO.Path.GetFileNameWithoutExtension(map.MapImagePath).ToLower();
+
+                // Filter map type
+                if (mapNameWithPrefix.StartsWith("de") && mnuShowDefusalMaps.IsChecked == false)
+                    continue;
+                if (mapNameWithPrefix.StartsWith("cs") && mnuShowHostageMaps.IsChecked == false)
+                    continue;
+                if (mapNameWithPrefix.StartsWith("ar") && mnuShowArmsRaceMaps.IsChecked == false)
+                    continue;
+                if (mapNameWithPrefix.StartsWith("dz") && mnuShowDangerZoneMaps.IsChecked == false)
+                    continue;
+
+                // Filter file existence
+                if (map.BspFilePath == null && mnuShowMapsMissingBsp.IsChecked == false)
+                    continue;
+                if (map.NavFilePath == null && mnuShowMapsMissingNav.IsChecked == false)
+                    continue;
+                if (map.AinFilePath == null && mnuShowMapsMissingAin.IsChecked == false)
+                    continue;
+
+                newMap.Tag = map;
+                newMap.Content = map.MapFileName;
+                newMaps.Add(newMap);
+            }
+
+            this.comboBoxMaps.ItemsSource = newMaps.OrderBy(m => m.Content);
+            if (newMaps.Count > 0)
+                this.comboBoxMaps.SelectedIndex = 0;
         }
 
         #region background worker
@@ -127,61 +182,6 @@ namespace Damage_Calculator
             }
         }
 
-        private static string calculateMD5(string filename)
-        {
-            using (var md5 = System.Security.Cryptography.MD5.Create())
-            {
-                using (var stream = File.OpenRead(filename))
-                {
-                    var hash = md5.ComputeHash(stream);
-                    return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-                }
-            }
-        }
-
-        private void updateMapsWithCurrentFilter()
-        {
-            if (!this.IsInitialized)
-                return;
-
-            // Add maps
-            var newMaps = new List<ComboBoxItem>();
-
-            foreach (var mapItem in this.allMaps)
-            {
-                var newMap = new ComboBoxItem();
-                var map = (CsgoMap)mapItem.Tag;
-
-                string mapNameWithPrefix = System.IO.Path.GetFileNameWithoutExtension(map.MapImagePath).ToLower();
-                
-                // Filter map type
-                if (mapNameWithPrefix.StartsWith("de") && mnuShowDefusalMaps.IsChecked == false)
-                    continue;
-                if (mapNameWithPrefix.StartsWith("cs") && mnuShowHostageMaps.IsChecked == false)
-                    continue;
-                if (mapNameWithPrefix.StartsWith("ar") && mnuShowArmsRaceMaps.IsChecked == false)
-                    continue;
-                if (mapNameWithPrefix.StartsWith("dz") && mnuShowDangerZoneMaps.IsChecked == false)
-                    continue;
-
-                // Filter file existence
-                if (map.BspFilePath == null && mnuShowMapsMissingBsp.IsChecked == false)
-                    continue;
-                if (map.NavFilePath == null && mnuShowMapsMissingNav.IsChecked == false)
-                    continue;
-                if (map.AinFilePath == null && mnuShowMapsMissingAin.IsChecked == false)
-                    continue;
-
-                newMap.Tag = map;
-                newMap.Content = map.MapFileName;
-                newMaps.Add(newMap);
-            }
-
-            this.comboBoxMaps.ItemsSource = newMaps.OrderBy(m => m.Content);
-            if (newMaps.Count > 0)
-                this.comboBoxMaps.SelectedIndex = 0;
-        }
-
         private void BgWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             this.gridLoading.Visibility = Visibility.Collapsed;
@@ -189,13 +189,13 @@ namespace Damage_Calculator
 
         private void BgWorker_DoWork(object sender, DoWorkEventArgs e)
         {
-            var maps = Globals.Settings.CsgoHelper.GetMaps();
+            var maps = Shared.Globals.Settings.CsgoHelper.GetMaps();
             bgWorker.ReportProgress(0, maps);
             var serializer = new XmlSerializer(typeof(List<CsgoWeapon>));
 
             List<CsgoWeapon> weapons;
 
-            string itemsFile = System.IO.Path.Combine(Globals.Settings.CsgoHelper.CsgoPath, "csgo\\scripts\\items\\items_game.txt");
+            string itemsFile = System.IO.Path.Combine(Shared.Globals.Settings.CsgoHelper.CsgoPath, "csgo\\scripts\\items\\items_game.txt");
             string saveFileDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CSGO Damage Calculator");
             string currentHash = calculateMD5(itemsFile);
 
@@ -234,7 +234,7 @@ namespace Damage_Calculator
                 Directory.CreateDirectory(saveFileDir);
             }
 
-            weapons = Globals.Settings.CsgoHelper.GetWeapons();
+            weapons = Shared.Globals.Settings.CsgoHelper.GetWeapons();
             serializer.Serialize(new FileStream(System.IO.Path.Combine(saveFileDir, currentHash), FileMode.Create), weapons);
             bgWorker.ReportProgress(1, weapons);
         }
@@ -302,7 +302,7 @@ namespace Damage_Calculator
 
         private void parseBspData(CsgoMap map)
         {
-            map.EntityList = Globals.Settings.CsgoHelper.ReadEntityListFromBsp(map.BspFilePath);
+            map.EntityList = Shared.Globals.Settings.CsgoHelper.ReadEntityListFromBsp(map.BspFilePath);
 
             // Current format for one entity is: 
             //
@@ -409,7 +409,7 @@ namespace Damage_Calculator
             if (map.NavFilePath == null || map.AinFilePath == null)
             {
                 // If either no NAV or no AIN file has been found, try to update them via the BSP pakfile
-                var navFilesFound = Globals.Settings.CsgoHelper.ReadIfPackedNavFilesInBsp(map.BspFilePath);
+                var navFilesFound = Shared.Globals.Settings.CsgoHelper.ReadIfPackedNavFilesInBsp(map.BspFilePath);
                 if (navFilesFound.Item1)
                 {
                     map.NavFileBspPacked = true;

@@ -4,11 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Damage_Calculator.Models
+namespace Shared.Models
 {
-    class MapPoint
+    public class MapPoint
     {
-        public System.Windows.Shapes.Ellipse Circle { get; set; }
+        public System.Windows.Shapes.Ellipse? Circle { get; set; }
 
         public double PercentageX { get; set; }
 

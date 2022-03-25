@@ -4,22 +4,22 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Damage_Calculator.ZatVdfParser;
+using Shared.ZatVdfParser;
 using Microsoft.Win32;
-using Damage_Calculator.Models;
+using Shared.Models;
 
-namespace Damage_Calculator
+namespace Shared
 {
     public class SteamHelper
     {
-        private string steamPath;
-        private List<SteamLibrary> steamLibraries;
+        private string? steamPath;
+        private List<SteamLibrary>? steamLibraries;
 
         /// <summary>
         /// Gets the absolute path to the Steam install directory.
         /// If it can't be fetched (i.e. Steam is not installed) null is returned.
         /// </summary>
-        public string SteamPath
+        public string? SteamPath
         {
             get
             {
@@ -35,7 +35,7 @@ namespace Damage_Calculator
         /// Gets a list of all Steam libraries, and whether they're existent or not.
         /// If it can't be fetched (i.e. Steam is not installed) null is returned.
         /// </summary>
-        public List<SteamLibrary> SteamLibraries
+        public List<SteamLibrary>? SteamLibraries
         {
             get
             {
@@ -59,7 +59,7 @@ namespace Damage_Calculator
         /// Gets the path to the Steam install directory. (For external use <see cref="SteamPath"/> is preferred.)
         /// </summary>
         /// <returns>The absolute path to the Steam install directory, or null if it can't be fetched.</returns>
-        public string GetSteamPath()
+        public string? GetSteamPath()
         {
             var steamKey = Registry.CurrentUser.OpenSubKey("software\\valve\\steam");
 
@@ -86,7 +86,7 @@ namespace Damage_Calculator
         /// Fetches a list of Steam libraries, which are deposited in the Steam config, as well as whether the libraries exist on the drive.
         /// </summary>
         /// <returns>A list of all deposited Steam libraries, and if they exist.</returns>
-        public List<SteamLibrary> GetSteamLibraries()
+        public List<SteamLibrary>? GetSteamLibraries()
         {
             if (this.steamPath == null)
                 this.steamPath = this.GetSteamPath();
@@ -100,11 +100,11 @@ namespace Damage_Calculator
 
             // Fetch additional libraries
             var configFile = new VDFFile(configFilePath);
-            IEnumerable<string> additionalSteamLibraries = configFile["InstallConfigStore"]?["Software"]?["valve"]?["Steam"].Children.Where(c => c.Name.StartsWith("BaseInstallFolder_")).Select(c => c.Value);
+            IEnumerable<string>? additionalSteamLibraries = configFile["InstallConfigStore"]?["Software"]?["valve"]?["Steam"].Children.Where(c => c.Name!.StartsWith("BaseInstallFolder_")).Select(c => c.Value)!;
 
             // List libraries plus default Steam directory, because that's the default library
             var allLibraries = new List<SteamLibrary> { new SteamLibrary(this.steamPath) };
-            foreach(string addLib in additionalSteamLibraries)
+            foreach(string addLib in additionalSteamLibraries!)
             {
                 allLibraries.Add(new SteamLibrary(addLib.Replace("\\\\", "\\")));
             }
@@ -112,7 +112,7 @@ namespace Damage_Calculator
             return allLibraries;
         }
 
-        public List<SteamGame> GetInstalledGames()
+        public List<SteamGame>? GetInstalledGames()
         {
             var steamLibraries = this.GetSteamLibraries();
 
@@ -126,7 +126,7 @@ namespace Damage_Calculator
                 if (!library.DoesExist)
                     continue;
 
-                List<string> manifestFiles = Directory.GetFiles(Path.Combine(library.Path, "steamapps")).ToList().Where(f => this.isAppManifestFile(f)).ToList();
+                List<string> manifestFiles = Directory.GetFiles(Path.Combine(library.Path!, "steamapps")).ToList().Where(f => this.isAppManifestFile(f)).ToList();
 
                 foreach (string manifestFile in manifestFiles)
                 {
@@ -140,7 +140,7 @@ namespace Damage_Calculator
 
                     var currGame = new SteamGame();
 
-                    this.populateGameInfo(currGame, root);
+                    this.populateGameInfo(currGame, root!);
 
                     if((currGame.GameState & (int)GameState.StateFullyInstalled) != 0)
                     {
@@ -153,7 +153,7 @@ namespace Damage_Calculator
             return allGames;
         }
 
-        public string GetGamePathFromExactName(string gameName)
+        public string? GetGamePathFromExactName(string gameName)
         {
             var steamLibraries = this.GetSteamLibraries();
 
@@ -167,7 +167,7 @@ namespace Damage_Calculator
                 if (!library.DoesExist)
                     continue;
 
-                List<string> manifestFiles = Directory.GetFiles(Path.Combine(library.Path, "steamapps")).ToList().Where(f => this.isAppManifestFile(f)).ToList();
+                List<string> manifestFiles = Directory.GetFiles(Path.Combine(library.Path!, "steamapps")).ToList().Where(f => this.isAppManifestFile(f)).ToList();
 
                 foreach (string manifestFile in manifestFiles)
                 {
@@ -179,7 +179,7 @@ namespace Damage_Calculator
 
                     var root = manifestVDF["AppState"];
 
-                    if(root["name"].Value.Trim().ToLower() != gameName.Trim().ToLower())
+                    if(root!["name"].Value!.Trim().ToLower() != gameName.Trim().ToLower())
                     {
                         // Not our wanted game, skip
                         continue;
@@ -192,7 +192,7 @@ namespace Damage_Calculator
                     if ((currGame.GameState & (int)GameState.StateFullyInstalled) != 0)
                     {
                         // Game was fully installed according to steam
-                        return Path.Combine(library.Path, "steamapps", "common", currGame.InstallFolderName);
+                        return Path.Combine(library.Path!, "steamapps", "common", currGame.InstallFolderName!);
                     }
                 }
             }

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Damage_Calculator.ZatVdfParser
+namespace Shared.ZatVdfParser
 {
     public class VDFFile
     {
@@ -41,7 +41,7 @@ namespace Damage_Calculator.ZatVdfParser
         }
         private void Parse(string filePathOrText, bool parseTextDirectly)
         {
-            Element currentLevel = null;
+            Element? currentLevel = null;
 
             // Generate stream from string in case we want to read it directly, instead of using a file stream (boolean parameter)
             var stream = new MemoryStream();
@@ -52,7 +52,7 @@ namespace Damage_Calculator.ZatVdfParser
 
             using (StreamReader reader = parseTextDirectly ? new StreamReader(stream) : new StreamReader(filePathOrText))
             {
-                string line = null;
+                string? line = null;
                 while ((line = reader.ReadLine()) != null)
                 {
                     if (line.StartsWith("\0"))
@@ -93,7 +93,7 @@ namespace Damage_Calculator.ZatVdfParser
                     }
                     else if (line == "}")
                     {
-                        currentLevel = currentLevel.Parent;
+                        currentLevel = currentLevel!.Parent;
                     }
                     /*else if (line == "{")
                     {
@@ -112,7 +112,7 @@ namespace Damage_Calculator.ZatVdfParser
                 return RootElements[key];
             }
         }
-        public Element this[string key]
+        public Element? this[string key]
         {
             get
             {

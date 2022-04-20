@@ -422,7 +422,7 @@ namespace Shared
         /// </summary>
         /// <param name="bspFilePath">The absolute path to the BSP file.</param>
         /// <returns>A tuple containing whether nav or ain files were found, in that order.</returns>
-        public (bool, bool) ReadIfPackedNavFilesInBsp(string bspFilePath)
+        public (bool, bool, NavMesh) ReadIfPackedNavFilesInBsp(string bspFilePath)
         {
             bool navFound = false;
             bool ainFound = false;
@@ -446,26 +446,30 @@ namespace Shared
             }
 
             if (readZipBytes == null)
-                return (false, false);
+                return (false, false, null!);
 
             using (var stream = new MemoryStream(readZipBytes))
             {
                 using(var zip = new ZipArchive(stream, ZipArchiveMode.Read))
                 {
-                    foreach(var entry in zip.Entries)
+                    NavMesh? nav = null;
+                    foreach (var entry in zip.Entries)
                     {
                         if (entry.FullName.EndsWith(".nav"))
+                        {
                             // Found a packed NAV file
                             navFound = true;
+                            nav = NavFile.Parse(entry.Open());
+                        }
                         if(entry.FullName.EndsWith(".ain"))
                             // Found a packed AIN file
                             ainFound = true;
 
                         if (navFound && ainFound)
                             // If both already found, return prematurely
-                            return (true, true);
+                            return (true, true, nav!);
                     }
-                    return (navFound, ainFound);
+                    return (navFound, ainFound, nav!);
                 }
             }
         }

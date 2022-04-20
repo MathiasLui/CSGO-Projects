@@ -131,7 +131,8 @@ namespace Shared.Models
         public float BombBY { get; set; } = -1;
 
         /// <summary>
-        /// The bomb damage in this map. By default it's 500.
+        /// The bomb damage in this map.
+        /// If not specified in a map, the default value is used, which is 500 units.
         /// </summary>
         public float BombDamage { get; set; } = 500;
 
@@ -140,15 +141,38 @@ namespace Shared.Models
         /// </summary>
         public string? EntityList { get; set; }
 
+        /// <summary>
+        /// Amount of CT spawns on this map, that have priority over other spawns.
+        /// (For example getting filled first when playing competitive)
+        /// </summary>
         public int AmountPrioritySpawnsCT { get; set; }
 
+        /// <summary>
+        /// Amount of total CT spawns on this map.
+        /// </summary>
         public int AmountSpawnsCT { get; set; }
 
+        /// <summary>
+        /// Amount of T spawns on this map, that have priority over other spawns.
+        /// (For example getting filled first when playing competitive)
+        /// </summary>
         public int AmountPrioritySpawnsT { get; set; }
 
+        /// <summary>
+        /// Amount of total T spawns on this map.
+        /// </summary>
         public int AmountSpawnsT { get; set; }
 
+        /// <summary>
+        /// Amount of possible hostages on this map.
+        /// </summary>
         public int AmountHostages { get; set; }
+
+        /// <summary>
+        /// X and Y offset of the coordinates relative to the map's given coordinates as well as a new map size multiplier.
+        /// This is used to correct for inaccurate coordinates and scale in the map's associated text file.
+        /// </summary>
+        public MapCustomOverwriteMapping MapOverwrite { get; set; } = new();
 
         public bool HasPrioritySpawnsT
         {
@@ -167,5 +191,7 @@ namespace Shared.Models
         }
 
         public List<PlayerSpawn> SpawnPoints { get; set; } = new List<PlayerSpawn>();
+
+        public NavMesh? NavMesh { get; set; }
     }
 }

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Damage_Calculator"
         mc:Ignorable="d"
-        Title="CS:GO Damage Calculator" Height="566" Width="877" MinHeight="700" MinWidth="700"
+        Title="CS:GO Damage Calculator" Height="566" Width="1030" MinHeight="700" MinWidth="1000"
         Style="{DynamicResource CustomWindowStyle}"
         WindowStartupLocation="CenterScreen" Icon="27.ico"
         WindowState="Maximized"
@@ -15,28 +15,8 @@
         PreviewMouseDown="Window_PreviewMouseDown">
     <Grid>
         <Menu>
-            <MenuItem Header="View">
-                <MenuItem x:Name="mnuShowBombSites" StaysOpenOnClick="True" Header="Show bomb sites" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowSpawnAreas" StaysOpenOnClick="True" Header="Show spawn areas" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowStandardSpawns" StaysOpenOnClick="True" Header="Show standard spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShow2v2Spawns" StaysOpenOnClick="True" Header="Show 2v2 spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowHostageSpawns" StaysOpenOnClick="True" Header="Show hostage spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
-                <MenuItem x:Name="mnuAllowNonPrioritySpawns" StaysOpenOnClick="True" Header="Allow non-priority spawns" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowDrawnMarkers" StaysOpenOnClick="True" Header="Show drawn markers" IsCheckable="True" IsChecked="True" Checked="visibilityMenu_CheckChanged" Unchecked="visibilityMenu_CheckChanged" />
-                <Separator />
-                <MenuItem Header="Themes">
-                    <MenuItem Header="Dark" Uid="0" Click="changeTheme_Click" />
-                    <MenuItem Header="Flashbang" Uid="1" Click="changeTheme_Click" />
-                </MenuItem>
-            </MenuItem>
-            <MenuItem Header="Map Filter">
-                <MenuItem x:Name="mnuShowDefusalMaps" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show defusal maps" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowHostageMaps" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show hostage maps" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowArmsRaceMaps" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show arms race maps" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowDangerZoneMaps" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show danger zone maps" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowMapsMissingBsp" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show maps with missing map file" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowMapsMissingNav" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show maps with missing NAV file" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
-                <MenuItem x:Name="mnuShowMapsMissingAin" StaysOpenOnClick="True" IsCheckable="True" IsChecked="True"  Header="Show maps with missing AIN file" Checked="filterMenu_CheckChanged" Unchecked="filterMenu_CheckChanged" />
+            <MenuItem Header="Edit">
+                <MenuItem x:Name="mnuOpenSettings" Header="Settings..." Click="mnuOpenSettings_Click" />
             </MenuItem>
             <MenuItem Header="Help">
                 <MenuItem x:Name="mnuAbout" Header="About..." Uid="0" Click="mnuAbout_Click" />
@@ -51,6 +31,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="160" />
                 <ColumnDefinition />
+                <ColumnDefinition Width="250" />
             </Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Grid.Column="1" Margin="0,0,0,5">
                 <TextBlock FontWeight="Bold" Text="Mode:" />
@@ -72,8 +53,9 @@
                         <TextBlock x:Name="textDistanceUnits" Text="0" Margin="10,0,0,0" Foreground="IndianRed" />
                     </StackPanel>
                 </StackPanel>
-                <Rectangle x:Name="rectTop" VerticalAlignment="Top" Grid.Row="1" Height="1" Fill="White" Grid.ColumnSpan="2" />
-            <Rectangle x:Name="rectSide" HorizontalAlignment="Left" Width="1" Grid.Row="1" Grid.Column="1" Fill="White" />
+                <Rectangle x:Name="rectTop" VerticalAlignment="Top" Grid.Row="1" Height="1" Fill="White" Grid.ColumnSpan="3" />
+            <Rectangle x:Name="rectLeftSide" HorizontalAlignment="Left" Width="1" Grid.Row="1" Grid.Column="1" Fill="White" />
+            <Rectangle x:Name="rectRightSide" HorizontalAlignment="Right" Width="1" Grid.Row="1" Grid.Column="1" Fill="White" />
             <StackPanel x:Name="leftStackPanel" Margin="10,20,0,0" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Stretch">
                 <StackPanel>
                     <StackPanel>
@@ -102,48 +84,134 @@
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
-            <GroupBox Header="Info" VerticalAlignment="Bottom" Grid.Row="1" Margin="10,0,0,10">
-                <StackPanel>
-                    <StackPanel>
-                        <CheckBox x:Name="chkHasMapFile" Content="Has map file" IsEnabled="False" />
-                        <StackPanel Orientation="Horizontal">
-                            <CheckBox x:Name="chkHasNavFile" Content="Has NAV file" IsEnabled="False" />
-                            <TextBlock x:Name="txtNavFilePacked" FontSize="10" Margin="5,0,0,0" Text="(Packed)" Visibility="Collapsed" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <CheckBox x:Name="chkHasAinFile" Content="Has AIN file" IsEnabled="False" />
-                            <TextBlock x:Name="txtAinFilePacked" FontSize="10" Margin="5,0,0,0" Text="(Packed)" Visibility="Collapsed" />
-                        </StackPanel>
-                        <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
-                            <TextBlock Text="Max bomb damage:" />
-                            <TextBlock Margin="5,0,0,0" x:Name="txtBombMaxDamage" Text="0" Foreground="IndianRed" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Bomb radius:" />
-                            <TextBlock Margin="5,0,0,0" x:Name="txtBombRadius" Text="0" Foreground="IndianRed" />
-                        </StackPanel>
-                    </StackPanel>
-                    <StackPanel Margin="0,10,0,0">
-                        <TextBlock Text="Cursor position:" />
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="X:" />
-                            <TextBlock x:Name="txtCursorX" Text="0" Margin="10,0,0,0" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Y:" />
-                            <TextBlock x:Name="txtCursorY" Text="0" Margin="10,0,0,0" />
-                        </StackPanel>
-                    </StackPanel>
-                </StackPanel>
-            </GroupBox>
             <local:ZoomBorder x:Name="rightZoomBorder" Grid.Row="1" Grid.Column="1" Margin="10" ClipToBounds="True" SizeChanged="rightZoomBorder_SizeChanged">
                 <Viewbox>
                     <Grid>
                         <Image x:Name="mapImage" MouseLeftButtonUp="mapImage_MouseLeftButtonUp" HorizontalAlignment="Center" VerticalAlignment="Center" MouseRightButtonUp="mapImage_MouseRightButtonUp" LayoutUpdated="mapImage_LayoutUpdated" />
-                        <Canvas x:Name="pointsCanvas" Width="{Binding ActualWidth, ElementName=mapImage, Mode=OneWay}" Height="{Binding ActualHeight, ElementName=mapImage, Mode=OneWay}" />
+                        <Canvas x:Name="mapCanvas" Width="{Binding ActualWidth, ElementName=mapImage, Mode=OneWay}" Height="{Binding ActualHeight, ElementName=mapImage, Mode=OneWay}">
+                            <Canvas.CacheMode>
+                                <BitmapCache RenderAtScale="8" />
+                            </Canvas.CacheMode>
+                        </Canvas>
                     </Grid>
                 </Viewbox>
             </local:ZoomBorder>
+            <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="2" Margin="10,0,10,10">
+                <GroupBox x:Name="groupWeaponName" Header="WEAPON-NAME">
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Base damage:" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Armor penetration:" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Damage dropoff:" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Max bullet range:" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Headshot modifier:" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtWeaponBaseDamage" Text="None" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtWeaponArmorPenetration" Text="None" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtWeaponDamageDropoff" Text="None" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtWeaponMaxRange" Text="None" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtWeaponHeadshotModifier" Text="None" Margin="10,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+                <GroupBox Header="NAV info" Margin="0,10,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Current layer:" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Average height:" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Area ID:" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Connections:" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Name:" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtNavAreasAmount" Text="None" Margin="10,0,0,0" Foreground="IndianRed" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtNavAreaHeightPercentage" Text="None" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtNavAreaID" Text="None" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtNavAreaConnectionsAmount" Text="None" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="txtNavAreaPlace" Text="None" Margin="10,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+                <GroupBox Header="Map info" Margin="0,10,0,0">
+                    <StackPanel>
+                        <StackPanel>
+                            <CheckBox x:Name="chkHasMapFile" Content="Has map file" IsEnabled="False" />
+                            <StackPanel Orientation="Horizontal">
+                                <CheckBox x:Name="chkHasNavFile" Content="Has NAV file" IsEnabled="False" />
+                                <TextBlock x:Name="txtNavFilePacked" FontSize="10" Margin="5,0,0,0" Text="(Packed)" Visibility="Collapsed" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <CheckBox x:Name="chkHasAinFile" Content="Has AIN file" IsEnabled="False" />
+                                <TextBlock x:Name="txtAinFilePacked" FontSize="10" Margin="5,0,0,0" Text="(Packed)" Visibility="Collapsed" />
+                            </StackPanel>
+                            <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                                <TextBlock Text="Max bomb damage:" />
+                                <TextBlock Margin="5,0,0,0" x:Name="txtBombMaxDamage" Text="0" Foreground="IndianRed" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Bomb radius:" />
+                                <TextBlock Margin="5,0,0,0" x:Name="txtBombRadius" Text="0" Foreground="IndianRed" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Margin="0,10,0,0">
+                            <TextBlock Text="Cursor position:" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="X:" />
+                                <TextBlock x:Name="txtCursorX" Text="0" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Y:" />
+                                <TextBlock x:Name="txtCursorY" Text="0" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Z:" />
+                                <TextBlock x:Name="txtCursorZ" Text="0" Margin="10,0,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
         </Grid>
         <Grid x:Name="gridLoading" Background="#B2000000" Visibility="Collapsed">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">

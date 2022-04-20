@@ -1,0 +1,95 @@
+﻿<Window x:Class="Damage_Calculator.wndSettings"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Damage_Calculator"
+        xmlns:ext="http://schemas.xceed.com/wpf/xaml/toolkit"
+        mc:Ignorable="d"
+        Style="{DynamicResource CustomWindowStyle}"
+        WindowStartupLocation="CenterOwner"
+        Title="Settings" Height="677" Width="496" ResizeMode="NoResize" SizeToContent="WidthAndHeight">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="10">
+            <GroupBox Header="Visuals" BorderBrush="DarkCyan">
+                <StackPanel>
+                    <GroupBox Header="Themes" BorderBrush="DarkCyan">
+                        <StackPanel>
+                            <RadioButton x:Name="radioDarkTheme" Content="Dark" Uid="0" IsChecked="True" />
+                            <RadioButton x:Name="radioLightTheme" Content= "Flashbang" Uid="1" />
+                        </StackPanel>
+                    </GroupBox>
+                    <CheckBox x:Name="mnuShowBombSites" Content="Show bomb sites" />
+                    <CheckBox x:Name="mnuShowSpawnAreas" Content="Show spawn areas" />
+                    <CheckBox x:Name="mnuShowStandardSpawns" Content="Show standard spawns" />
+                    <CheckBox x:Name="mnuShow2v2Spawns" Content="Show 2v2 spawns" />
+                    <CheckBox x:Name="mnuShowHostageSpawns" Content="Show hostage spawns" />
+                    <CheckBox x:Name="mnuAllowNonPrioritySpawns" Content="Allow non-priority spawns" />
+                    <GroupBox Header="NAV areas" Margin="0,5,0,0" BorderBrush="DarkCyan">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Label Content="NAV display mode:" />
+                                <ComboBox x:Name="comboNavDisplayModes" Width="200" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                <StackPanel>
+                                    <Label Content="Colour for lowest:" Height="25" VerticalAlignment="Center" />
+                                    <Label Content="Colour for highest:" Height="25" VerticalAlignment="Center" />
+                                    <Label Content="Colour for hovered:" Height="25" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Margin="10,0,0,0" Width="200" >
+                                    <ext:ColorPicker x:Name="colourNavLow" DropDownBackground="#222222" HeaderBackground="#222222" HeaderForeground="White" TabBackground="#222222" />
+                                    <ext:ColorPicker x:Name="colourNavHigh" Margin="0,5,0,0" DropDownBackground="#222222" HeaderBackground="#222222" HeaderForeground="White" TabBackground="#222222" />
+                                    <ext:ColorPicker x:Name="colourNavHover" Margin="0,5,0,0" DropDownBackground="#222222" HeaderBackground="#222222" HeaderForeground="White" TabBackground="#222222" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                <Label Content="Draw NAV areas with height..." Height="25" VerticalAlignment="Center" />
+                                <StackPanel>
+                                    <Label Content="Above:" Height="25" VerticalAlignment="Center" />
+                                    <Label Content="Below:" Height="25" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Margin="10,0,0,0" Width="200" >
+                                    <Slider x:Name="sliderNavAbove" Margin="0,5,0,0" IsSnapToTickEnabled="True" Minimum="0" Maximum="100" ValueChanged="sliderNav_ValueChanged" />
+                                    <Slider x:Name="sliderNavBelow" Margin="0,5,0,0" IsSnapToTickEnabled="True" Minimum="0" Maximum="100" ValueChanged="sliderNav_ValueChanged" />
+                                </StackPanel>
+                                <StackPanel Margin="10,0,0,0" Width="55" >
+                                    <Label x:Name="txtNavAbove" Content="0 %" HorizontalContentAlignment="Right" />
+                                    <Label x:Name="txtNavBelow" Content="0 %" HorizontalContentAlignment="Right" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+            </GroupBox>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Label Content="Current map coords offset:" />
+                <Label Content="X:" Margin="5,0,0,0" />
+                <ext:IntegerUpDown x:Name="intCurrentMapCoordsOffsetX" Width="80" Margin="5,0,0,0" Value="0"  Background="#222222" Foreground="White" />
+                <Label Content="Y:" Margin="5,0,0,0" />
+                <ext:IntegerUpDown x:Name="intCurrentMapCoordsOffsetY" Width="80" Margin="5,0,0,0" Value="0" Background="#222222" Foreground="White" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Label Content="Current map multiplier override" />
+                <ext:SingleUpDown x:Name="intCurrentMapMultiplierOverride" Width="80" Margin="5,0,0,0" Value="0" Background="#222222" Foreground="White" />
+                <Label Content="0 = off, original =" Margin="5,0,0,0" />
+                <Label x:Name="txtCurrentMapMultiplier" Padding="0,5" Content="0" />
+            </StackPanel>
+            <GroupBox Header="Map Filter" BorderBrush="IndianRed" Margin="0,10,0,0">
+                <StackPanel>
+                    <CheckBox x:Name="mnuShowDefusalMaps" Content="Show defusal maps" />
+                    <CheckBox x:Name="mnuShowHostageMaps"  Content="Show hostage maps" />
+                    <CheckBox x:Name="mnuShowArmsRaceMaps"  Content="Show arms race maps" />
+                    <CheckBox x:Name="mnuShowDangerZoneMaps"  Content="Show danger zone maps" />
+                    <CheckBox x:Name="mnuShowMapsMissingBsp"  Content="Show maps with missing map file" />
+                    <CheckBox x:Name="mnuShowMapsMissingNav"  Content="Show maps with missing NAV file" />
+                    <CheckBox x:Name="mnuShowMapsMissingAin"  Content="Show maps with missing AIN file" />
+                </StackPanel>
+            </GroupBox>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="10" Height="25">
+                <Button x:Name="btnSave" Content="Save" Margin="0,0,5,0" Padding="10,0" Background="Green" Click="btnSave_Click" />
+                <Button x:Name="btnCancel" Content="Cancel" Padding="10,0" Click="btnCancel_Click" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

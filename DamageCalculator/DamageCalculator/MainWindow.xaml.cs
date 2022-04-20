@@ -18,6 +18,7 @@ using Shared.Models;
 using Shared.ZatVdfParser;
 using System.Xml.Serialization;
 using System.Globalization;
+using System.Collections.ObjectModel;
 
 namespace Damage_Calculator
 {
@@ -26,21 +27,44 @@ namespace Damage_Calculator
     /// </summary>
     public partial class MainWindow : Window
     {
+        public static string FilesPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CSGO Damage Calculator");
+        public static readonly string WeaponsFileExtension = ".wpd";
+
         /// <summary>
-        /// Gets or sets the point that will be there when left-clicking a map.
+        /// Holds current in-game mouse coordinates when hovering over the map
         /// </summary>
-        private MapPoint leftPoint = new MapPoint();
-        private Color leftPointColour = Color.FromArgb(140, 255, 0, 0);
+        private Vector3 currentMouseCoord = Vector3.Zero;
+
+        /// <summary>
+        /// Gets or sets the point that will be there when left-clicking a map in shooting mode.
+        /// </summary>
+        private MapPoint targetPoint = new MapPoint();
+
+        /// <summary>
+        /// Gets or sets the point that will be there when left-clicking a map in bomb mode.
+        /// </summary>
+        private MapPoint bombPoint = new MapPoint();
 
         /// <summary>
         /// Gets or sets the point that will be there when right-clicking a map.
         /// </summary>
-        private MapPoint rightPoint = new MapPoint();
-        private Color rightPointColour = Color.FromArgb(140, 0, 255, 0);
+        private MapPoint playerPoint = new MapPoint();
 
-        private Line connectingLine = new Line();
+        // Point and line colours
+        private Color leftClickPointColour = Color.FromArgb(140, 255, 0, 0);
+        private Color rightClickPointColour = Color.FromArgb(140, 0, 255, 0);
+        private Color connectingLineColour = Color.FromArgb(140, 255, 255, 255);
 
-        private MapPoint bombCircle = new MapPoint();
+        /// <summary>
+        /// The height layer if several NAV areas overlap at the mouse position (0 is the bottom most (in UI should show this + 1), -1 if there is no area at the mouse)
+        /// </summary>
+        private int currentHeightLayer = -1;
+        private List<NavArea> hoveredNavAreas = null;
+        private bool userChangedLayer = false;
+        private int userHeightLayerOffset = 0;
+
+        private System.Windows.Shapes.Path connectingLine = new System.Windows.Shapes.Path();
+        private bool redrawLine = false;
 
         private eDrawMode DrawMode = eDrawMode.Shooting;
 
@@ -66,6 +90,7 @@ namespace Damage_Calculator
         public MainWindow()
         {
             InitializeComponent();
+            Globals.LoadSettings();
 
             Shared.Globals.Settings.CsgoHelper.CsgoPath = Shared.Globals.Settings.SteamHelper.GetGamePathFromExactName("Counter-Strike: Global Offensive");
             if (Shared.Globals.Settings.CsgoHelper.CsgoPath == null)
@@ -82,6 +107,54 @@ namespace Damage_Calculator
             this.gridLoading.Visibility = Visibility.Visible;
             bgWorker.RunWorkerAsync();
         }
+
+        #region Canvas Helper Methods
+        private bool canvasContains(UIElement element)
+        {
+            return this.mapCanvas.Children.Contains(element);
+        }
+
+        private bool canvasContains(Predicate<UIElement> predicate)
+        {
+            foreach (UIElement child in this.mapCanvas.Children)
+            {
+                if (predicate(child))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void canvasAdd(UIElement element)
+        {
+            this.mapCanvas.Children.Add(element);
+        }
+
+        private void canvasRemove(UIElement element)
+        {
+            this.mapCanvas.Children.Remove(element);
+        }
+
+        private void canvasRemoveWhere(Predicate<UIElement> predicate)
+        {
+            // Mark elements to remove because you can't continue iterating after you deleted an item
+            var elementsToRemove = new List<UIElement>();
+            foreach (UIElement child in this.mapCanvas.Children)
+            {
+                if(predicate(child))
+                    elementsToRemove.Add(child);
+            }
+
+            // Remove marked elements
+            foreach (UIElement element in elementsToRemove)
+                this.mapCanvas.Children.Remove(element);
+        }
+
+        private void canvasClear()
+        {
+            this.mapCanvas.Children.Clear();
+        }
+        #endregion
 
         private static string calculateMD5(string filename)
         {
@@ -100,6 +173,8 @@ namespace Damage_Calculator
             if (!this.IsInitialized)
                 return;
 
+            string prevSelectedMapName = ((this.comboBoxMaps.SelectedItem as ComboBoxItem)?.Tag as CsgoMap)?.MapFileName;
+
             // Add maps
             var newMaps = new List<ComboBoxItem>();
 
@@ -111,21 +186,21 @@ namespace Damage_Calculator
                 string mapNameWithPrefix = System.IO.Path.GetFileNameWithoutExtension(map.MapImagePath).ToLower();
 
                 // Filter map type
-                if (mapNameWithPrefix.StartsWith("de") && mnuShowDefusalMaps.IsChecked == false)
+                if (mapNameWithPrefix.StartsWith("de") && Globals.Settings.ShowDefusalMaps == false)
                     continue;
-                if (mapNameWithPrefix.StartsWith("cs") && mnuShowHostageMaps.IsChecked == false)
+                if (mapNameWithPrefix.StartsWith("cs") && Globals.Settings.ShowHostageMaps == false)
                     continue;
-                if (mapNameWithPrefix.StartsWith("ar") && mnuShowArmsRaceMaps.IsChecked == false)
+                if (mapNameWithPrefix.StartsWith("ar") && Globals.Settings.ShowArmsRaceMaps == false)
                     continue;
-                if (mapNameWithPrefix.StartsWith("dz") && mnuShowDangerZoneMaps.IsChecked == false)
+                if (mapNameWithPrefix.StartsWith("dz") && Globals.Settings.ShowDangerZoneMaps == false)
                     continue;
 
                 // Filter file existence
-                if (map.BspFilePath == null && mnuShowMapsMissingBsp.IsChecked == false)
+                if (map.BspFilePath == null && Globals.Settings.ShowMapsMissingBsp == false)
                     continue;
-                if (map.NavFilePath == null && mnuShowMapsMissingNav.IsChecked == false)
+                if (map.NavFilePath == null && Globals.Settings.ShowMapsMissingNav == false)
                     continue;
-                if (map.AinFilePath == null && mnuShowMapsMissingAin.IsChecked == false)
+                if (map.AinFilePath == null && Globals.Settings.ShowMapsMissingAin == false)
                     continue;
 
                 newMap.Tag = map;
@@ -135,7 +210,28 @@ namespace Damage_Calculator
 
             this.comboBoxMaps.ItemsSource = newMaps.OrderBy(m => m.Content);
             if (newMaps.Count > 0)
-                this.comboBoxMaps.SelectedIndex = 0;
+            {
+                if (prevSelectedMapName != null)
+                {
+                    // Reselect the map the user had previously selected if it's still in the list
+                    ComboBoxItem foundMap = newMaps.FirstOrDefault(item => (item.Tag as CsgoMap)?.MapFileName == prevSelectedMapName);
+                    if (foundMap != null)
+                    {
+                        // Previously selected map is still in the list so select it
+                        this.comboBoxMaps.SelectedItem = foundMap;
+                    }
+                    else
+                    {
+                        // Map is not in this selection anymore so select the first one
+                        this.comboBoxMaps.SelectedIndex = 0;
+                    }
+                }
+                else
+                {
+                    // User didn't have any map selected (shouldn't be the case, however)
+                    this.comboBoxMaps.SelectedIndex = 0;
+                }
+            }
         }
 
         #region background worker
@@ -160,6 +256,8 @@ namespace Damage_Calculator
                 this.comboBoxMaps.ItemsSource = maps.OrderBy(m => m.Content);
                 if (maps.Count > 0)
                     this.comboBoxMaps.SelectedIndex = 0;
+
+                this.canvasReload();
             }
             else if(e.ProgressPercentage == 1)
             {
@@ -196,36 +294,30 @@ namespace Damage_Calculator
             List<CsgoWeapon> weapons;
 
             string itemsFile = System.IO.Path.Combine(Shared.Globals.Settings.CsgoHelper.CsgoPath, "csgo\\scripts\\items\\items_game.txt");
-            string saveFileDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CSGO Damage Calculator");
+            string saveFileDir = MainWindow.FilesPath;
             string currentHash = calculateMD5(itemsFile);
 
             if (Directory.Exists(saveFileDir))
             {
                 string[] files = Directory.GetFiles(saveFileDir);
-                if (files.Length == 1)
-                {
-                    // Compare hashes
-                    string oldHash = System.IO.Path.GetFileName(files[0]);
+                string weaponsFileName = files.FirstOrDefault(file => file.ToLower().EndsWith(MainWindow.WeaponsFileExtension));
 
-                    if(currentHash == oldHash)
+                if (weaponsFileName != null)
+                {
+                    // WPD file found, compare hash and file name (which is old hash)
+                    string oldHash = System.IO.Path.GetFileNameWithoutExtension(weaponsFileName);
+
+                    if (currentHash == oldHash)
                     {
-                        weapons = (List<CsgoWeapon>)serializer.Deserialize(new FileStream(System.IO.Path.Combine(saveFileDir, currentHash), FileMode.Open));
+                        // Weapons didn't update since last time so just load them
+                        weapons = (List<CsgoWeapon>)serializer.Deserialize(new FileStream(System.IO.Path.Combine(saveFileDir, currentHash + MainWindow.WeaponsFileExtension), FileMode.Open));
                         bgWorker.ReportProgress(1, weapons);
                         return;
                     }
                     else
                     {
-                        foreach (string file in files)
-                        {
-                            File.Delete(file);
-                        }
-                    }
-                }
-                else
-                {
-                    foreach(string file in files)
-                    {
-                        File.Delete(file);
+                        // Weapons need to be updated so delete any WPD files (Weapon Parse Data)
+                        this.clearWeaponDataFiles(files);
                     }
                 }
             }
@@ -234,36 +326,47 @@ namespace Damage_Calculator
                 Directory.CreateDirectory(saveFileDir);
             }
 
+            // We didn't return cause we didn't find an up-to-date WPD file so parse new weapon data
             weapons = Shared.Globals.Settings.CsgoHelper.GetWeapons();
-            serializer.Serialize(new FileStream(System.IO.Path.Combine(saveFileDir, currentHash), FileMode.Create), weapons);
+            serializer.Serialize(new FileStream(System.IO.Path.Combine(saveFileDir, currentHash + MainWindow.WeaponsFileExtension), FileMode.Create), weapons);
             bgWorker.ReportProgress(1, weapons);
         }
         #endregion
+
+        private void clearWeaponDataFiles(string[] files)
+        {
+            foreach (string file in files)
+            {
+                // Delete all files that contain weapon info (other files we wanna keep)
+                if (file.ToLower().EndsWith(MainWindow.WeaponsFileExtension))
+                    File.Delete(file);
+            }
+        }
 
         private void resetCanvas(bool updatedViewSettings = false)
         {
             if (this.IsInitialized)
             {
-                this.pointsCanvas.Children.Clear();
                 if (!updatedViewSettings)
                 {
-                    this.leftPoint = null;
-                    this.rightPoint = null;
+                    this.targetPoint = null;
+                    this.playerPoint = null;
                     this.connectingLine = null;
-                    this.bombCircle = null;
+                    this.bombPoint = null;
                     this.unitsDistance = -1;
                     this.textDistanceMetres.Text = "0";
                     this.textDistanceUnits.Text = "0";
                     this.txtResult.Text = "0";
                     this.txtResultArmor.Text = "0";
                 }
+                this.UpdateLayout();
+                this.canvasClear();
+                mapCanvas.CacheMode = new BitmapCache((mapCanvas.CacheMode as BitmapCache).RenderAtScale);
             }
         }
 
         private void loadMap(CsgoMap map)
         {
-            mapImage.Source = map.MapImage;
-
             if (map.BspFilePath != null)
             {
                 // Map radar has an actual existing BSP map file
@@ -282,6 +385,7 @@ namespace Damage_Calculator
 
             this.resetCanvas();
             this.rightZoomBorder.Reset();
+            mapImage.Source = map.MapImage;
 
             if (map.MapType == CsgoMap.eMapType.Defusal)
             {
@@ -297,11 +401,24 @@ namespace Damage_Calculator
                 this.txtBombMaxDamage.Text = this.txtBombRadius.Text = "None";
             }
 
+            // Set the map's coordinates offset from the settings file in case we have a manual offset
+            var mapOffsetMapping = Globals.Settings.MapCoordinateOffsets.FirstOrDefault(m => m.DDSFileName == System.IO.Path.GetFileNameWithoutExtension(map.MapImagePath));
+            if (mapOffsetMapping != null)
+                map.MapOverwrite = mapOffsetMapping;
+
             this.loadedMap = map;
         }
 
         private void parseBspData(CsgoMap map)
         {
+            // Reset values so that they are filled with new values if the map is updated (prevents multiple identical spawns being drawn)
+            map.AmountPrioritySpawnsCT = 0;
+            map.AmountPrioritySpawnsT = 0;
+            map.AmountSpawnsCT = 0;
+            map.AmountSpawnsT = 0;
+            map.AmountHostages = 0;
+            map.SpawnPoints.Clear();
+
             map.EntityList = Shared.Globals.Settings.CsgoHelper.ReadEntityListFromBsp(map.BspFilePath);
 
             // Current format for one entity is: 
@@ -310,7 +427,7 @@ namespace Damage_Calculator
             //      "property"  "value"
             //  }
             //
-            // but we want this format like in VDF files, so we can use our VDF parser:
+            // but we want this format like in VDF files, so we can use our VDF parser without modifying it (laziness):
             //
             //  "sometext"
             //  {
@@ -336,13 +453,13 @@ namespace Damage_Calculator
                 var entityRootVdf = vdf["entity"];
                 string className = entityRootVdf["classname"].Value;
 
-                // Check for map parameters entity
+                // Check for map parameters entity, which contains stuff like the bomb radius, if custom
                 if (className == "info_map_parameters")
                 {
                     string bombRadius = entityRootVdf["bombradius"]?.Value;
                     if (bombRadius != null)
                     {
-                        // Map has custom bomb radius
+                        // Map has custom bomb radius (which might or might not be the same as the default)
                         if (float.TryParse(bombRadius, out float bombRad) && bombRad >= 0)
                         {
                             // bombradius is valid and not negative
@@ -356,8 +473,8 @@ namespace Damage_Calculator
                     // Entity is spawn point
                     var spawn = new PlayerSpawn();
                     spawn.Team = className == "info_player_terrorist" ? ePlayerTeam.Terrorist : ePlayerTeam.CounterTerrorist;
-                    spawn.Origin = this.stringToVector3(entityRootVdf["origin"]?.Value) ?? Vector3.Empty;
-                    spawn.Angles = this.stringToVector3(entityRootVdf["angles"]?.Value) ?? Vector3.Empty;
+                    spawn.Origin = this.stringToVector3(entityRootVdf["origin"]?.Value) ?? Vector3.Zero;
+                    spawn.Angles = this.stringToVector3(entityRootVdf["angles"]?.Value) ?? Vector3.Zero;
 
                     // highest priority by default. if ALL spawns are high priority, then there are no priority spawns,
                     // in that case we will later check the amount of priority spawns and if it is the same as the total spawns.
@@ -368,7 +485,7 @@ namespace Damage_Calculator
                     if (priority < 1) // 0 or nothing means it's highest priority, then counts up as an integer with decreasing priority
                     {
                         spawn.IsPriority = true;
-                        // Count prio spawns
+                        // Count into prio spawns
                         if (spawn.Team == ePlayerTeam.CounterTerrorist)
                             map.AmountPrioritySpawnsCT++;
                         else
@@ -393,8 +510,8 @@ namespace Damage_Calculator
                 {
                     // Entity is hostage spawn point (equivalent but latter is csgo specific)
                     var spawn = new PlayerSpawn();
-                    spawn.Origin = this.stringToVector3(entityRootVdf["origin"]?.Value) ?? Vector3.Empty;
-                    spawn.Angles = this.stringToVector3(entityRootVdf["angles"]?.Value) ?? Vector3.Empty;
+                    spawn.Origin = this.stringToVector3(entityRootVdf["origin"]?.Value) ?? Vector3.Zero;
+                    spawn.Angles = this.stringToVector3(entityRootVdf["angles"]?.Value) ?? Vector3.Zero;
                     spawn.Team = ePlayerTeam.CounterTerrorist; // Just for the colour
 
                     // Count all hostage spawns
@@ -413,6 +530,7 @@ namespace Damage_Calculator
                 if (navFilesFound.Item1)
                 {
                     map.NavFileBspPacked = true;
+                    map.NavMesh = navFilesFound.Item3;
                     map.NavFilePath = "PACKED";
                 }
                 if (navFilesFound.Item2)
@@ -420,6 +538,12 @@ namespace Damage_Calculator
                     map.AinFileBspPacked = true;
                     map.AinFilePath = "PACKED";
                 }
+            }
+
+            if(map.NavFilePath != null && !map.NavFileBspPacked)
+            {
+                // Nav file not packed and a file path for it is existent so parse it here
+                map.NavMesh = Shared.NavFile.Parse(new FileStream(map.NavFilePath, FileMode.Open));
             }
         }
 
@@ -448,21 +572,39 @@ namespace Damage_Calculator
             return null;
         }
 
+        #region Conversion Helpers
+        private double getUnitsFromPixels(double pixels)
+        {
+            double mapSizePixels = (this.mapImage.Source as BitmapSource).PixelWidth;
+            double mapSizeUnits = mapSizePixels * (this.loadedMap.MapOverwrite.MapScale > 0 ? this.loadedMap.MapOverwrite.MapScale : this.loadedMap.MapSizeMultiplier);
+            return Math.Abs(pixels) * mapSizeUnits / mapSizePixels;
+        }
+
         private double getPixelsFromUnits(double units)
         {
             int mapSizePixels = (this.mapImage.Source as BitmapSource).PixelWidth;
-            double mapSizeUnits = mapSizePixels * this.loadedMap.MapSizeMultiplier;
-            return Math.Abs(units) * this.pointsCanvas.ActualWidth / mapSizeUnits;
+            double mapSizeUnits = mapSizePixels * (this.loadedMap.MapOverwrite.MapScale > 0 ? this.loadedMap.MapOverwrite.MapScale : this.loadedMap.MapSizeMultiplier);
+            return Math.Abs(units) * this.mapCanvas.ActualWidth / mapSizeUnits;
         }
 
         private Point getPointFromGameCoords(double x, double y)
         {
             Point p = new Point();
-            p.X = this.getPixelsFromUnits(this.loadedMap.UpperLeftWorldXCoordinate - x);
-            p.Y = this.getPixelsFromUnits(this.loadedMap.UpperLeftWorldYCoordinate - y);
+            p.X = this.getPixelsFromUnits(this.loadedMap.UpperLeftWorldXCoordinate - x - this.loadedMap.MapOverwrite.CoordOffset.X);
+            p.Y = this.getPixelsFromUnits(this.loadedMap.UpperLeftWorldYCoordinate - y + this.loadedMap.MapOverwrite.CoordOffset.Y);
             return p;
         }
 
+        private Point getGameCoordsFromPoint(double x, double y)
+        {
+            Point p = new Point();
+            p.X = this.loadedMap.UpperLeftWorldXCoordinate + this.getUnitsFromPixels(x) - this.loadedMap.MapOverwrite.CoordOffset.X;
+            p.Y = this.loadedMap.UpperLeftWorldYCoordinate - this.getUnitsFromPixels(y) + this.loadedMap.MapOverwrite.CoordOffset.Y;
+            return p;
+        }
+        #endregion
+
+        #region Get UI elements
         private Ellipse getPointEllipse(Color strokeColour)
         {
             Ellipse circle = new Ellipse();
@@ -528,83 +670,183 @@ namespace Damage_Calculator
 
             return spawnBlip;
         }
+        #endregion
 
-        private void updateCirclePositions()
+        private void positionNavMeshes()
         {
+            var navMeshesInCanvas = new List<UIElement>();
+            foreach (UIElement child in this.mapCanvas.Children)
+            {
+                if(child is FrameworkElement element && element.Tag is NavArea)
+                {
+                    // Child is nav mesh path so mark it for removal if the canvas hasn't settled yet
+                    navMeshesInCanvas.Add(child);
+                }
+            }
+
+            if (Globals.Settings.NavDisplayMode != Shared.NavDisplayModes.None && navMeshesInCanvas.Count > 0 && this.mapCanvas.ActualWidth > 0 && this.mapCanvas.ActualHeight > 0)
+                // Canvas has already settled - no need to redraw
+                return;
+
+            // Remove all NAV meshes from canvas
+            navMeshesInCanvas.ForEach(navMesh => canvasRemove(navMesh));
+
+            if (Globals.Settings.NavDisplayMode == Shared.NavDisplayModes.None)
+                // Don't draw and NAV areas if disabled
+                return;
+
+            if (this.loadedMap?.NavMesh?.Header?.NavAreas == null)
+                return;
+
+            this.loadedMap.NavMesh.Header.NavAreas = this.loadedMap.NavMesh.Header.NavAreas.OrderBy(area => area.MedianPosition.Z).ToArray();
+
+            foreach (var area in this.loadedMap.NavMesh.Header.NavAreas)
+            {
+                // Don't draw area if it's not in the threshold that's set in the settings
+                // First get the percentage of the average area height between the min and max area
+                double heightPercentage = Shared.Globals.Map(area.MedianPosition.Z, this.loadedMap.NavMesh.MinZ ?? 0, this.loadedMap.NavMesh.MaxZ ?? 0, 0, 1);
+                if (heightPercentage < Globals.Settings.ShowNavAreasAbove || heightPercentage > Globals.Settings.ShowNavAreasBelow)
+                    continue;
+
+                var path = new System.Windows.Shapes.Path();
+                path.Tag = area;
+
+                this.setNavAreaColour(path, area, isHovered: false);
+
+                path.HorizontalAlignment = HorizontalAlignment.Left;
+                path.VerticalAlignment = VerticalAlignment.Top;
+                
+                path.IsHitTestVisible = false; // Make it not catch mouse down events
+
+                var pathGeometry = new PathGeometry(new List<PathFigure>
+                {
+                    new PathFigure(this.getPointFromGameCoords(area.ActualNorthWestCorner.X, area.ActualNorthWestCorner.Y), new List<PathSegment>
+                    {
+                        new LineSegment(this.getPointFromGameCoords(area.ActualNorthEastCorner.X, area.ActualNorthEastCorner.Y), isStroked: true),
+                        new LineSegment(this.getPointFromGameCoords(area.ActualSouthEastCorner.X, area.ActualSouthEastCorner.Y), isStroked: true),
+                        new LineSegment(this.getPointFromGameCoords(area.ActualSouthWestCorner.X, area.ActualSouthWestCorner.Y), isStroked: true),
+                    }, closed: true)
+                });
+
+                path.Data = pathGeometry;
+                this.canvasAdd(path);
+            }
+
+            /*NavArea? a = this.loadedMap.NavMesh.Header.NavAreas.FirstOrDefault(area => area.ID == 9);
+            if(a != null)
+            {
+                System.Diagnostics.Debug.Print(this.loadedMap.MapFileName);
+                System.Diagnostics.Debug.Print($"NorthWest: {a.ActualNorthWestCorner.X}, {a.ActualNorthWestCorner.Y}, {a.ActualNorthWestCorner.Z}");
+                System.Diagnostics.Debug.Print($"NorthEast: {a.ActualNorthEastCorner.X}, {a.ActualNorthEastCorner.Y}, {a.ActualNorthEastCorner.Z}");
+                System.Diagnostics.Debug.Print($"SouthWest: {a.ActualSouthWestCorner.X}, {a.ActualSouthWestCorner.Y}, {a.ActualSouthWestCorner.Z}");
+                System.Diagnostics.Debug.Print($"SouthEast: {a.ActualSouthEastCorner.X}, {a.ActualSouthEastCorner.Y}, {a.ActualSouthEastCorner.Z}");
+            }*/
+        }
+
+        private void addMapPointIfMissing(MapPoint point)
+        {
+            // Check if it's in the canvas
+            if (!this.canvasContains(point.Circle))
+                // Add it cause it was missing
+                this.canvasAdd(point.Circle);
+
+            // Set point scale and position
+            Canvas.SetLeft(point.Circle, (point.PercentageX * mapCanvas.ActualWidth / 100f) - (point.Circle.Width / 2));
+            Canvas.SetTop(point.Circle, (point.PercentageY * mapCanvas.ActualHeight / 100f) - (point.Circle.Height / 2));
+            point.Circle.Width = point.Circle.Height = point.PercentageScale * this.mapCanvas.ActualWidth / 100f;
+        }
+
+        private void drawPointsAndConnectingLine()
+        {
+            // Make sure line is not null
             if (this.connectingLine == null)
-                this.connectingLine = new Line();
+                this.connectingLine = new System.Windows.Shapes.Path();
 
-            if (this.leftPoint?.Circle != null)
+            // Handle the positioning of the circles if they were set (by right or left clicking)
+            if (this.targetPoint?.Circle != null)
             {
-                if (pointsCanvas.Children.IndexOf(this.leftPoint.Circle) == -1 && this.mnuShowDrawnMarkers.IsChecked == true)
-                    pointsCanvas.Children.Add(this.leftPoint.Circle);
-
-                Canvas.SetLeft(this.leftPoint.Circle, (this.leftPoint.PercentageX * pointsCanvas.ActualWidth / 100f) - (this.leftPoint.Circle.Width / 2));
-                Canvas.SetTop(this.leftPoint.Circle, (this.leftPoint.PercentageY * pointsCanvas.ActualHeight / 100f) - (this.leftPoint.Circle.Height / 2));
-                this.leftPoint.Circle.Width = this.leftPoint.Circle.Height = this.leftPoint.PercentageScale * this.pointsCanvas.ActualWidth / 100f;
+                // Add to canvas if not in there
+                this.addMapPointIfMissing(this.targetPoint);
             }
 
-            if (this.rightPoint?.Circle != null)
+            if (this.playerPoint?.Circle != null)
             {
-                if (pointsCanvas.Children.IndexOf(this.rightPoint.Circle) == -1 && this.mnuShowDrawnMarkers.IsChecked == true)
-                    pointsCanvas.Children.Add(this.rightPoint.Circle);
-
-                Canvas.SetLeft(this.rightPoint.Circle, (this.rightPoint.PercentageX * pointsCanvas.ActualWidth / 100f) - (this.rightPoint.Circle.Width / 2));
-                Canvas.SetTop(this.rightPoint.Circle, (this.rightPoint.PercentageY * pointsCanvas.ActualHeight / 100f) - (this.rightPoint.Circle.Height / 2));
-                this.rightPoint.Circle.Width = this.rightPoint.Circle.Height = this.rightPoint.PercentageScale * this.pointsCanvas.ActualWidth / 100f;
+                // Add to canvas if not in there
+                this.addMapPointIfMissing(this.playerPoint);
             }
 
-            if (this.bombCircle?.Circle != null)
+            if (this.bombPoint?.Circle != null)
             {
-                if (pointsCanvas.Children.IndexOf(this.bombCircle.Circle) == -1 && this.mnuShowDrawnMarkers.IsChecked == true)
-                    pointsCanvas.Children.Add(this.bombCircle.Circle);
-
-                Canvas.SetLeft(this.bombCircle.Circle, (this.bombCircle.PercentageX * pointsCanvas.ActualWidth / 100f) - (this.bombCircle.Circle.Width / 2));
-                Canvas.SetTop(this.bombCircle.Circle, (this.bombCircle.PercentageY * pointsCanvas.ActualHeight / 100f) - (this.bombCircle.Circle.Height / 2));
-                this.bombCircle.Circle.Width = this.bombCircle.Circle.Height = this.bombCircle.PercentageScale * this.pointsCanvas.ActualWidth / 100f;
+                // Add to canvas if not in there
+                this.addMapPointIfMissing(this.bombPoint);
             }
 
-            if((this.leftPoint?.Circle != null || this.bombCircle?.Circle != null) && this.rightPoint?.Circle != null)
+            if ((this.targetPoint?.Circle != null || this.bombPoint?.Circle != null) && this.playerPoint?.Circle != null)
             {
-                // Right click cirle exists, and left click circle or left click bomb circle exists
-                // Ready to calculate damage and draw the in-between line
-                if (this.DrawMode == eDrawMode.Shooting)
+                // Right click cirle exists, and left click target (or bomb) circle exists
+                // In other words: Two points were made, which means we can draw a line in between them
+                // Note: Only one left click circle should exist, depending on which draw mode we're in
+
+                // The points are on the canvas, because this was handled just before this
+
+                if (this.redrawLine)
                 {
-                    // Update line start pos to left click circle
-                    this.connectingLine.X1 = Canvas.GetLeft(this.leftPoint.Circle) + (this.leftPoint.Circle.Width / 2);
-                    this.connectingLine.Y1 = Canvas.GetTop(this.leftPoint.Circle) + (this.leftPoint.Circle.Height / 2);
+                    Point leftClickPos;
+                    Point rightClickPos;
+                    // Ready to calculate damage and draw the in-between line
+                    if (this.DrawMode == eDrawMode.Shooting)
+                    {
+                        // Update line start pos to left click target circle
+                        leftClickPos.X = Canvas.GetLeft(this.targetPoint.Circle) + (this.targetPoint.Circle.Width / 2);
+                        leftClickPos.Y = Canvas.GetTop(this.targetPoint.Circle) + (this.targetPoint.Circle.Height / 2);
+                    }
+                    else // We are in bomb mode. Change this if more modes are added
+                    {
+                        // Update line start pos to left click bomb circle
+                        leftClickPos.X = Canvas.GetLeft(this.bombPoint.Circle) + (this.bombPoint.Circle.Width / 2);
+                        leftClickPos.Y = Canvas.GetTop(this.bombPoint.Circle) + (this.bombPoint.Circle.Height / 2);
+                    }
+                    // Update line end pos to right click player circle
+                    rightClickPos.X = Canvas.GetLeft(this.playerPoint.Circle) + (this.playerPoint.Circle.Width / 2);
+                    rightClickPos.Y = Canvas.GetTop(this.playerPoint.Circle) + (this.playerPoint.Circle.Height / 2);
+
+                    // Set visuals of the connecting line
+                    this.connectingLine.Fill = null;
+                    this.connectingLine.Stroke = new SolidColorBrush(this.connectingLineColour); // White, slightly transparent
+                    this.connectingLine.StrokeThickness = 2;
+
+                    // Make it not clickable
+                    this.connectingLine.IsHitTestVisible = false;
+
+                    this.connectingLine.HorizontalAlignment = HorizontalAlignment.Left;
+                    this.connectingLine.VerticalAlignment = VerticalAlignment.Top;
+
+                    var pathGeometry = new PathGeometry(new List<PathFigure>
+                                        {
+                                            new PathFigure(leftClickPos, new List<PathSegment>
+                                            {
+                                                new LineSegment(rightClickPos, isStroked: true)
+                                            }, closed: false)
+                                        });
+
+                    this.connectingLine.Data = pathGeometry;
+                    this.connectingLine.Tag = new Point[] { leftClickPos, rightClickPos };
+
+                    if (!this.canvasContains(this.connectingLine))
+                    {
+                        this.canvasAdd(this.connectingLine);
+                        this.lineDrawn = true;
+                    }
+                    this.redrawLine = false;
+                    // Update top right corner distance texts
+                    this.unitsDistance = this.calculateDistanceInUnits();
+
+                    this.textDistanceUnits.Text = Math.Round(this.unitsDistance, 3).ToString(CultureInfo.InvariantCulture);
+                    this.textDistanceMetres.Text = Math.Round(this.unitsDistance / 39.37, 3).ToString(CultureInfo.InvariantCulture);
+
+                    // Recalculate and show damage
+                    this.settings_Updated(null, null);
                 }
-                else
-                {
-                    // Update line start pos to left click bomb circle
-                    this.connectingLine.X1 = Canvas.GetLeft(this.bombCircle.Circle) + (this.bombCircle.Circle.Width / 2);
-                    this.connectingLine.Y1 = Canvas.GetTop(this.bombCircle.Circle) + (this.bombCircle.Circle.Height / 2);
-                }
-                // Update line end pos to right click circle
-                this.connectingLine.X2 = Canvas.GetLeft(this.rightPoint.Circle) + (this.rightPoint.Circle.Width / 2);
-                this.connectingLine.Y2 = Canvas.GetTop(this.rightPoint.Circle) + (this.rightPoint.Circle.Height / 2);
-
-                this.connectingLine.Fill = null;
-                this.connectingLine.Stroke = new SolidColorBrush(Color.FromArgb(140, 255, 255, 255)); // White, slightly transparent
-                this.connectingLine.StrokeThickness = 2;
-                // Make it not clickable
-                this.connectingLine.IsHitTestVisible = false;
-
-                int indexLine = pointsCanvas.Children.IndexOf(this.connectingLine);
-                if (indexLine < 0 && this.mnuShowDrawnMarkers.IsChecked == true)
-                {
-                    pointsCanvas.Children.Add(this.connectingLine);
-                    this.lineDrawn = true;
-                }
-
-                // Update top right corner distance texts
-                this.unitsDistance = this.calculateDotDistanceInUnits();
-
-                this.textDistanceUnits.Text = Math.Round(this.unitsDistance, 2).ToString();
-                this.textDistanceMetres.Text = Math.Round(this.unitsDistance / 39.37, 2).ToString();
-
-                // Recalculate damage
-                this.settings_Updated(null, null);
             }
             else
             {
@@ -612,12 +854,51 @@ namespace Damage_Calculator
                 this.lineDrawn = false;
             }
 
-            if(this.loadedMap != null)
+            if (this.loadedMap != null)
             {
+                this.positionNavMeshes();
                 this.positionIcons();
                 this.positionSpawns();
             }
         }
+
+        /*private void getPlacePositions()
+        {
+            var places = new List<(string, Vector3)>();
+
+            if (this.loadedMap?.BspFilePath == null)
+                return;
+
+            foreach(var area in this.loadedMap.NavMesh.Header.NavAreas)
+            {
+                // Add the name and avg position to the list
+                if (area.PlaceID > 0 && area.PlaceID < this.loadedMap.NavMesh.Header.PlacesNames.Length)
+                    places.Add((this.loadedMap.NavMesh.Header.PlacesNames[area.PlaceID - 1], new Vector3 
+                    { 
+                        X = (area.NorthWestCorner.X + area.SouthEastCorner.X) / 2, 
+                        Y = (area.NorthWestCorner.Y + area.SouthEastCorner.Y) / 2,
+                        Z = (area.NorthWestCorner.Z + area.SouthEastCorner.Z) / 2,
+                    }));
+            }
+
+            // Average all X and Y positions of every place again and put it in a new list
+            var placesCorrected = new Dictionary<string, Vector3>();
+
+            foreach(var place in places)
+            {
+                if (!placesCorrected.ContainsKey(place.Item1))
+                {
+                    var correspondingPlaces = places.Where(pl => pl.Item1 == place.Item1);
+                    float X = correspondingPlaces.Sum(place => place.Item2.X);
+                    float Y = correspondingPlaces.Sum(place => place.Item2.Y);
+                    float Z = correspondingPlaces.Sum(place => place.Item2.Z);
+                    float newX = X / correspondingPlaces.Count();
+                    float newY = Y / correspondingPlaces.Count();
+                    float newZ = Z / correspondingPlaces.Count();
+                    placesCorrected.Add(place.Item1, new Vector3 { X = newX, Y = newY, Z = newZ });
+                }
+            }
+        }*/
 
         private void positionSpawns()
         {
@@ -626,19 +907,18 @@ namespace Damage_Calculator
             {
                 if (spawn.Type != eSpawnType.Hostage)
                 {
-                    if (mnuAllowNonPrioritySpawns.IsChecked == false && (!spawn.IsPriority || (spawn.Team == ePlayerTeam.Terrorist && !this.loadedMap.HasPrioritySpawnsT) || (spawn.Team == ePlayerTeam.CounterTerrorist && !this.loadedMap.HasPrioritySpawnsCT)))
+                    if (!Globals.Settings.AllowNonPrioritySpawns && (!spawn.IsPriority || (spawn.Team == ePlayerTeam.Terrorist && !this.loadedMap.HasPrioritySpawnsT) || (spawn.Team == ePlayerTeam.CounterTerrorist && !this.loadedMap.HasPrioritySpawnsCT)))
                         continue;
                 }
 
-                if (spawn.Type == eSpawnType.Standard && mnuShowStandardSpawns.IsChecked == false)
+                if (spawn.Type == eSpawnType.Standard && !Globals.Settings.ShowStandardSpawns)
                     continue;
-                else if (spawn.Type == eSpawnType.Wingman && mnuShow2v2Spawns.IsChecked == false)
+                else if (spawn.Type == eSpawnType.Wingman && !Globals.Settings.Show2v2Spawns)
                     continue;
-                else if (spawn.Type == eSpawnType.Hostage && mnuShowHostageSpawns.IsChecked == false)
+                else if (spawn.Type == eSpawnType.Hostage && !Globals.Settings.ShowHostageSpawns)
                     continue;
 
-                var existingViewBox = this.pointsCanvas.Children.OfType<Viewbox>().FirstOrDefault(v => v.Tag == spawn);
-                if (existingViewBox == null)
+                if (!canvasContains(child => child is Viewbox vb && vb.Tag == spawn))
                 {
                     Viewbox box = new Viewbox();
 
@@ -650,134 +930,113 @@ namespace Damage_Calculator
 
                     Point newCoords = this.getPointFromGameCoords(spawn.Origin.X, spawn.Origin.Y);
 
-                    pointsCanvas.Children.Add(box);
+                    this.canvasAdd(box);
                     Canvas.SetLeft(box, newCoords.X - box.Width / 2);
                     Canvas.SetTop(box, newCoords.Y - box.Height / 2);
                 }
             }
         }
 
-        private void positionIcons()
+        private void drawIconsIfFit(List<(string, Point)> itemsToAdd)
         {
-            double left;
-            double top;
-
-            if (mnuShowSpawnAreas.IsChecked == true)
+            foreach (var icon in itemsToAdd)
             {
-                // CT Icon
-                if (this.CTSpawnIcon == null)
+                // Is icon already in canvas?
+                if (canvasContains(child => child is FrameworkElement element && element.Tag.ToString() == icon.Item1))
                 {
-                    this.CTSpawnIcon = new Image();
-                    this.CTSpawnIcon.Source = new BitmapImage(new Uri("icon_ct.png", UriKind.RelativeOrAbsolute));
-                    this.CTSpawnIcon.Width = 25;
-                    this.CTSpawnIcon.Height = 25;
-                    this.CTSpawnIcon.Opacity = 0.6;
-                    this.CTSpawnIcon.IsHitTestVisible = false;
+                    // Yip, don't draw it again and check the next
+                    continue;
                 }
 
-                if (pointsCanvas.Children.IndexOf(CTSpawnIcon) == -1 && this.loadedMap.CTSpawnMultiplierX >= 0 && this.loadedMap.CTSpawnMultiplierY >= 0)
-                    pointsCanvas.Children.Add(CTSpawnIcon);
+                // Nope, create icon and add it
 
-                left = this.loadedMap.CTSpawnMultiplierX * this.mapImage.ActualWidth - (CTSpawnIcon.ActualWidth / 2);
-                top = this.loadedMap.CTSpawnMultiplierY * this.mapImage.ActualWidth - (CTSpawnIcon.ActualHeight / 2);
-                if (left >= 0 && left <= this.mapImage.ActualWidth && top >= 0 && top <= this.mapImage.ActualHeight)
+                var iconImage = new Image();
+                iconImage.Source = new BitmapImage(new Uri(icon.Item1, UriKind.RelativeOrAbsolute));
+                iconImage.Width = 25;
+                iconImage.Height = 25;
+                iconImage.Opacity = 0.6;
+                iconImage.IsHitTestVisible = false;
+                iconImage.Tag = icon.Item1;
+
+                // Get absolute icon coordinates from relative ones (0.0 to 1.0)
+                double left = icon.Item2.X * this.mapImage.ActualWidth - (iconImage.ActualWidth / 2);
+                double top = icon.Item2.Y * this.mapImage.ActualWidth - (iconImage.ActualHeight / 2);
+
+                // Should icon be drawn outside the canvas?
+                if (left < 0 && left > this.mapImage.ActualWidth || top < 0 && top > this.mapImage.ActualHeight)
                 {
-                    Canvas.SetLeft(CTSpawnIcon, left);
-                    Canvas.SetTop(CTSpawnIcon, top);
+                    // Yep, don't add it to the canvas and let the GC murder it
                 }
 
-                // T Icon
-                if (this.TSpawnIcon == null)
-                {
-                    this.TSpawnIcon = new Image();
-                    this.TSpawnIcon.Source = new BitmapImage(new Uri("icon_t.png", UriKind.RelativeOrAbsolute));
-                    this.TSpawnIcon.Width = 25;
-                    this.TSpawnIcon.Height = 25;
-                    this.TSpawnIcon.Opacity = 0.6;
-                    this.TSpawnIcon.IsHitTestVisible = false;
-                }
+                // It's in the image bounds so set position and add it
+                Canvas.SetLeft(iconImage, left);
+                Canvas.SetTop(iconImage, top);
 
-                if (pointsCanvas.Children.IndexOf(TSpawnIcon) == -1 && this.loadedMap.TSpawnMultiplierX >= 0 && this.loadedMap.TSpawnMultiplierY >= 0)
-                    pointsCanvas.Children.Add(TSpawnIcon);
-
-                left = this.loadedMap.TSpawnMultiplierX * this.mapImage.ActualWidth - (TSpawnIcon.ActualWidth / 2);
-                top = this.loadedMap.TSpawnMultiplierY * this.mapImage.ActualWidth - (TSpawnIcon.ActualHeight / 2);
-                if (left >= 0 && left <= this.mapImage.ActualWidth && top >= 0 && top <= this.mapImage.ActualHeight)
-                {
-                    Canvas.SetLeft(TSpawnIcon, left);
-                    Canvas.SetTop(TSpawnIcon, top);
-                }
-            }
-
-            if (mnuShowBombSites.IsChecked == true)
-            {
-                // Bomb A Icon
-                if (this.ASiteIcon == null)
-                {
-                    this.ASiteIcon = new Image();
-                    this.ASiteIcon.Source = new BitmapImage(new Uri("icon_a_site.png", UriKind.RelativeOrAbsolute));
-                    this.ASiteIcon.Width = 25;
-                    this.ASiteIcon.Height = 25;
-                    this.ASiteIcon.Opacity = 0.6;
-                    this.ASiteIcon.IsHitTestVisible = false;
-                }
-
-                if (pointsCanvas.Children.IndexOf(ASiteIcon) == -1 && this.loadedMap.BombAX >= 0 && this.loadedMap.BombAY >= 0)
-                    pointsCanvas.Children.Add(ASiteIcon);
-
-                left = this.loadedMap.BombAX * this.mapImage.ActualWidth - (ASiteIcon.ActualWidth / 2);
-                top = this.loadedMap.BombAY * this.mapImage.ActualWidth - (ASiteIcon.ActualHeight / 2);
-                if (left >= 0 && left <= this.mapImage.ActualWidth && top >= 0 && top <= this.mapImage.ActualHeight)
-                {
-                    Canvas.SetLeft(ASiteIcon, left);
-                    Canvas.SetTop(ASiteIcon, top);
-                }
-
-                // Bomb B Icon
-                if (this.BSiteIcon == null)
-                {
-                    this.BSiteIcon = new Image();
-                    this.BSiteIcon.Source = new BitmapImage(new Uri("icon_b_site.png", UriKind.RelativeOrAbsolute));
-                    this.BSiteIcon.Width = 25;
-                    this.BSiteIcon.Height = 25;
-                    this.BSiteIcon.Opacity = 0.6;
-                    this.BSiteIcon.IsHitTestVisible = false;
-                }
-
-                if (pointsCanvas.Children.IndexOf(BSiteIcon) == -1 && this.loadedMap.BombBX >= 0 && this.loadedMap.BombBY >= 0)
-                    pointsCanvas.Children.Add(BSiteIcon);
-
-                left = this.loadedMap.BombBX * this.mapImage.ActualWidth - (BSiteIcon.ActualWidth / 2);
-                top = this.loadedMap.BombBY * this.mapImage.ActualWidth - (BSiteIcon.ActualHeight / 2);
-                if (left >= 0 && left <= this.mapImage.ActualWidth && top >= 0 && top <= this.mapImage.ActualHeight)
-                {
-                    Canvas.SetLeft(BSiteIcon, left);
-                    Canvas.SetTop(BSiteIcon, top);
-                }
+                canvasAdd(iconImage);
             }
         }
 
-        private double calculateDotDistanceInUnits()
+        private void positionIcons()
         {
-            double leftX = this.connectingLine.X1;
-            double leftY = this.connectingLine.Y1;
+            if (Globals.Settings.ShowSpawnAreas)
+            {
+                var iconsToDraw = new List<(string, Point)>
+                {
+                    // The multipliers are values from 0.0 to 1.0 depending on how far right or down they are relatively to the map
+                    ("icon_ct.png", new Point(this.loadedMap.CTSpawnMultiplierX, this.loadedMap.CTSpawnMultiplierY)),
+                    ("icon_t.png", new Point(this.loadedMap.TSpawnMultiplierX, this.loadedMap.TSpawnMultiplierY))
+                };
 
-            double rightX = this.connectingLine.X2;
-            double rightY = this.connectingLine.Y2;
+                this.drawIconsIfFit(iconsToDraw);
+            }
 
-            // Distance in shown pixels
-            double diffPixels = Math.Sqrt(Math.Pow(Math.Abs(leftX - rightX), 2) + Math.Pow(Math.Abs(leftY - rightY), 2));
+            if (Globals.Settings.ShowBombSites)
+            {
+                var iconsToDraw = new List<(string, Point)>
+                {
+                    // The multipliers are values from 0.0 to 1.0 depending on how far right or down they are relatively to the map
+                    ("icon_a_site.png", new Point(this.loadedMap.BombAX, this.loadedMap.BombAY)),
+                    ("icon_b_site.png", new Point(this.loadedMap.BombBX, this.loadedMap.BombBY))
+                };
 
-            // Percentage on shown pixels
-            double diffPerc = diffPixels * 100f / this.mapImage.ActualWidth;
+                this.drawIconsIfFit(iconsToDraw);
+            }
+        }
 
-            // Distance on original pixel scales
-            double diffPixelsOriginal = diffPerc * (this.mapImage.Source as BitmapSource).PixelWidth / 100f;
+        private double calculateDistanceInUnits()
+        {
+            // left and right point for the X and Y coordinates (in pixels) so we gotta convert those
+            Point[] points = this.connectingLine.Tag as Point[];
 
-            // times scale multiplier
-            double unitsDifference = diffPixelsOriginal * this.loadedMap.MapSizeMultiplier;
+            double leftX = this.getUnitsFromPixels(points[0].X);
+            double leftY = this.getUnitsFromPixels(points[0].Y);
+            double leftZ;
 
-            return unitsDifference;
+            double rightX = this.getUnitsFromPixels(points[1].X);
+            double rightY = this.getUnitsFromPixels(points[1].Y);
+            double rightZ;
+
+            if (this.playerPoint.AssociatedAreaID < 0 ||
+                ((this.DrawMode == eDrawMode.Shooting && this.targetPoint.AssociatedAreaID < 0)
+                || (this.DrawMode == eDrawMode.Bomb && this.bombPoint.AssociatedAreaID < 0))) 
+            {
+                leftZ = 0;
+                rightZ = 0;
+            }
+            else
+            {
+                leftZ = this.DrawMode == eDrawMode.Shooting ? this.targetPoint.Z : this.bombPoint.Z;
+                rightZ = this.playerPoint.Z;
+            }
+
+            // Distance in shown pixels in 2D
+            double diffPixels2D = Math.Sqrt(Math.Pow(Math.Abs(leftX - rightX), 2) + Math.Pow(Math.Abs(leftY - rightY), 2));
+            double unitsDifference2D = this.getUnitsFromPixels(diffPixels2D);
+
+            // Add Z height to calculation, unless a point has no area ID associated, then it stays 2D
+            double diffDistance3D = Math.Sqrt(Math.Pow(diffPixels2D, 2) + Math.Pow(Math.Abs(leftZ - rightZ), 2));
+
+            return diffDistance3D;
         }
 
         private void calculateAndUpdateShootingDamage()
@@ -895,6 +1154,278 @@ namespace Damage_Calculator
             return flDamage;
         }
 
+        private bool isPointInMap(Point position)
+        {
+            return position.X >= 0 && position.Y >= 0 && position.X <= mapImage.ActualWidth && position.Y <= mapImage.ActualHeight;
+        }
+
+        private void changeTheme(REghZyFramework.Themes.ThemesController.ThemeTypes newTheme)
+        {
+            REghZyFramework.Themes.ThemesController.SetTheme(newTheme);
+
+            // Additional stuff you want to change manually
+            switch (newTheme)
+            {
+                case REghZyFramework.Themes.ThemesController.ThemeTypes.Dark:
+                    rectTop.Fill = rectLeftSide.Fill = rectRightSide.Fill = new SolidColorBrush(Colors.White);
+                    txtEasterEggMetres.Text = "Metres:";
+                    break;
+                case REghZyFramework.Themes.ThemesController.ThemeTypes.Light:
+                    rectTop.Fill = rectLeftSide.Fill = rectRightSide.Fill = new SolidColorBrush(Colors.Black);
+                    txtEasterEggMetres.Text = "Meters:";
+                    break;
+            }
+        }
+
+        private void canvasReload()
+        {
+            // Reload map list if map filters changed
+            this.updateMapsWithCurrentFilter();
+
+            // Reload visuals
+            this.resetCanvas(true);
+            this.changeTheme(Globals.Settings.Theme);
+        }
+
+        private float getPointHeightInArea(float x, float y, NavArea area)
+        {
+            Vector3[][] groups = new Vector3[][] 
+            { 
+                // Order within nested array: Point that gets weighted => Point that supplies its X (origin for X weight, 0% basically) => Point that supplies its Y in the same manner 
+                // So basically the second and third item is respectively the point left/right and above/under the first item (if north is up)
+                new Vector3[] { area.ActualNorthWestCorner, area.ActualNorthEastCorner, area.ActualSouthWestCorner },
+                new Vector3[] { area.ActualNorthEastCorner, area.ActualNorthWestCorner, area.ActualSouthEastCorner },
+                new Vector3[] { area.ActualSouthWestCorner, area.ActualSouthEastCorner, area.ActualNorthWestCorner },
+                new Vector3[] { area.ActualSouthEastCorner, area.ActualSouthWestCorner, area.ActualNorthEastCorner } 
+            };
+
+            float resultHeight = 0;
+
+            foreach (Vector3[] group in groups)
+            {
+                float xWeight = Shared.Globals.Map(x, group[1].X, group[0].X, 0, 1);
+                float yWeight = Shared.Globals.Map(y, group[2].Y, group[0].Y, 0, 1);
+                float combinedWeight = xWeight * yWeight;
+
+                resultHeight += combinedWeight * group[0].Z;
+            }
+
+            return resultHeight;
+        }
+
+        private void recalculateCoordinates()
+        {
+            if (this.mapImage.Source == null)
+                return;
+
+            var position = Mouse.GetPosition(mapImage);
+            if (this.isPointInMap(position))
+            {
+                Point posInGame = this.getGameCoordsFromPoint(position.X, position.Y);
+
+                this.currentMouseCoord.X = (float)posInGame.X;
+                txtCursorX.Text = Math.Round(posInGame.X, 2).ToString(CultureInfo.InvariantCulture);
+
+                this.currentMouseCoord.Y = (float)posInGame.Y;
+                txtCursorY.Text = Math.Round(posInGame.Y, 2).ToString(CultureInfo.InvariantCulture);
+
+                // Height to be displayed further down, depending on area chosen
+                float newZ = 0;
+
+                if (this.loadedMap.NavMesh?.Header?.NavAreas != null)
+                {
+                    var navAreasFound = new List<NavArea>();
+
+                    foreach (var area in this.loadedMap.NavMesh.Header.NavAreas)
+                    {
+                        if (posInGame.X < area.ActualNorthWestCorner.X)
+                            continue;
+                        if (posInGame.X > area.ActualNorthEastCorner.X)
+                            continue;
+                        if (posInGame.Y > area.ActualNorthWestCorner.Y)
+                            continue;
+                        if (posInGame.Y < area.ActualSouthWestCorner.Y)
+                            continue;
+
+                        // HERE we found an area that the mouse is in. Here we need to count areas in case they overlap
+                        navAreasFound.Add(area);
+                    }
+
+                    uint previousAreaID = this.getCurrentArea()?.ID ?? 0;
+
+                    // Select layer closest to previous one height-wise
+                    // (positionNavAreas() orders the NAV areas from bottom to top when adding so last one will be top one (based on average area height)) 
+                    if ((this.currentHeightLayer < 0 || this.currentHeightLayer >= navAreasFound.Count || this.hoveredNavAreas.Count != navAreasFound.Count) && navAreasFound.Count > 0 && !this.userChangedLayer)
+                    {
+                        // Current height layer selection is undefined or bigger than the amound of areas we have
+                        // Or the amount of areas hovered over has changed.
+                        // In that case set it to the layer with the lowest Z difference to the previously selected one
+
+                        if (navAreasFound.Count == 1 || this.hoveredNavAreas.Count == 0)
+                            this.currentHeightLayer = 0;
+                        else
+                        {
+                            int newHeightLayerIndex = 0;
+                            float lowestAreaHeightDifference = -1;
+                            for (int i = 0; i < navAreasFound.Count; i++)
+                            {
+                                float heightDiffToPrevArea = Math.Abs(navAreasFound[i].MedianPosition.Z - this.hoveredNavAreas[this.currentHeightLayer < 0 ? 0 : this.currentHeightLayer].MedianPosition.Z);
+                                if (heightDiffToPrevArea < lowestAreaHeightDifference || lowestAreaHeightDifference < 0)
+                                {
+                                    // Difference of currently looped area and last hovered area is smaller than previous loop iterations
+                                    newHeightLayerIndex = i;
+                                    lowestAreaHeightDifference = heightDiffToPrevArea;
+                                }
+                            }
+
+                            this.currentHeightLayer = newHeightLayerIndex;
+                        }
+                    }
+
+                    if (navAreasFound.Count == 0)
+                        this.currentHeightLayer = -1;
+
+                    // Update areas
+                    this.hoveredNavAreas = navAreasFound;
+                    this.currentHeightLayer += this.userHeightLayerOffset;
+
+                    uint newAreaID = this.getCurrentArea()?.ID ?? 0;
+
+                    if (this.hoveredNavAreas.Count > 0)
+                    {
+                        // There are areas hovered over
+                        newZ = this.getPointHeightInArea(currentMouseCoord.X, currentMouseCoord.Y, this.hoveredNavAreas[this.currentHeightLayer]);
+                    }
+
+                    this.fillNavAreaInfo();
+                    if (this.userChangedLayer || previousAreaID != newAreaID || newAreaID < 1)
+                    {
+                        // Hovered area changed so handle content of info box and highlighting of areas
+
+                        if (newAreaID > 0)
+                        {
+                            if (this.hoveredNavAreas.Count > 0 && this.currentHeightLayer > -1)
+                            {
+                                // There's a new area to highlight
+                                updateNavAreaHovered(newAreaID, setHovered: true);
+                            }
+                        }
+                        if (previousAreaID > 0)
+                        {
+                            // There's an old area to de-highlight
+                            updateNavAreaHovered(previousAreaID, setHovered: false);
+                        }
+                    }
+
+                    this.userChangedLayer = false;
+                    this.userHeightLayerOffset = 0;
+                }
+
+                // Display height
+                this.currentMouseCoord.Z = newZ;
+                txtCursorZ.Text = Math.Round(newZ, 2).ToString(CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                txtCursorX.Text = txtCursorY.Text = "0";
+            }
+        }
+
+        private void updateNavAreaHovered(uint areaID, bool setHovered)
+        {
+            foreach(FrameworkElement element in this.mapCanvas.Children)
+            {
+                if(element.Tag is NavArea area && area.ID == areaID)
+                {
+                    setNavAreaColour(element as System.Windows.Shapes.Path, area, setHovered);
+                    return;
+                }
+            }
+        }
+
+        private void setNavAreaColour(System.Windows.Shapes.Path pathOfArea, NavArea area, bool isHovered)
+        {
+            Color newColour;
+            if (isHovered)
+            {
+                newColour = Globals.Settings.NavHoverColour;
+            }
+            else
+            {
+                // Map average area height between two configurable colours
+                byte newA = (byte)Shared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.A, Globals.Settings.NavHighColour.A);
+                byte newR = (byte)Shared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.R, Globals.Settings.NavHighColour.R);
+                byte newG = (byte)Shared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.G, Globals.Settings.NavHighColour.G);
+                byte newB = (byte)Shared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.B, Globals.Settings.NavHighColour.B);
+                newColour = Color.FromArgb(newA, newR, newG, newB);
+            }
+
+            switch (Globals.Settings.NavDisplayMode)
+            {
+                case Shared.NavDisplayModes.Wireframe:
+                    pathOfArea.Stroke = new SolidColorBrush(newColour);
+                    pathOfArea.StrokeThickness = 1;
+                    pathOfArea.Fill = null;
+                    break;
+                case Shared.NavDisplayModes.Filled:
+                    pathOfArea.Stroke = null;
+                    pathOfArea.StrokeThickness = 0;
+                    pathOfArea.Fill = new SolidColorBrush(newColour);
+                    break;
+            }
+        }
+
+        private NavArea getCurrentArea()
+        {
+            if (this.hoveredNavAreas?.Count > 0 && this.currentHeightLayer > -1 && this.currentHeightLayer < this.hoveredNavAreas.Count)
+                return this.hoveredNavAreas[this.currentHeightLayer];
+
+            return null;
+        }
+
+        private void fillNavAreaInfo()
+        {
+            // Show current area not as index from 0 but starting from 1 (as in 1st layer, 2nd layer) etc.
+            if (this.hoveredNavAreas.Count > 0)
+            {
+                this.txtNavAreasAmount.Text = $"{(this.currentHeightLayer < 0 ? 0 : this.currentHeightLayer + 1)}/{this.hoveredNavAreas.Count}";
+                this.txtNavAreaHeightPercentage.Text = Math.Round(Shared.Globals.Map(this.hoveredNavAreas[this.currentHeightLayer].MedianPosition.Z, this.loadedMap.NavMesh.MinZ ?? 0, this.loadedMap.NavMesh.MaxZ ?? 0, 0, 100), 1).ToString(CultureInfo.InvariantCulture) + " %";
+                this.txtNavAreaID.Text = this.hoveredNavAreas[this.currentHeightLayer].ID.ToString();
+                this.txtNavAreaConnectionsAmount.Text = this.hoveredNavAreas[this.currentHeightLayer].ConnectionData.Sum(direction => direction.Count).ToString();
+                this.txtNavAreaPlace.Text = this.hoveredNavAreas[this.currentHeightLayer].PlaceID == 0 ? "None" : this.loadedMap.NavMesh.Header.PlacesNames[this.hoveredNavAreas[this.currentHeightLayer].PlaceID - 1];
+            }
+            else
+            {
+                this.txtNavAreasAmount.Text = "None";
+                this.txtNavAreaHeightPercentage.Text = "None";
+                this.txtNavAreaID.Text = "None";
+                this.txtNavAreaConnectionsAmount.Text = "None";
+                this.txtNavAreaPlace.Text = "None";
+            }
+        }
+
+        private void fillWeaponInfo()
+        {
+            if(this.selectedWeapon != null)
+            {
+                this.groupWeaponName.Header = this.selectedWeapon.ClassName.Replace('_','-');
+                this.txtWeaponBaseDamage.Text = this.selectedWeapon.BaseDamage.ToString(CultureInfo.InvariantCulture);
+                this.txtWeaponArmorPenetration.Text = this.selectedWeapon.ArmorPenetration.ToString(CultureInfo.InvariantCulture);
+                this.txtWeaponDamageDropoff.Text = this.selectedWeapon.DamageDropoff.ToString(CultureInfo.InvariantCulture);
+                this.txtWeaponMaxRange.Text = this.selectedWeapon.MaxBulletRange.ToString(CultureInfo.InvariantCulture);
+                this.txtWeaponHeadshotModifier.Text = this.selectedWeapon.HeadshotModifier.ToString(CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                this.groupWeaponName.Header = "WEAPON-NAME";
+                this.txtWeaponBaseDamage.Text = "None";
+                this.txtWeaponArmorPenetration.Text = "None";
+                this.txtWeaponDamageDropoff.Text = "None";
+                this.txtWeaponMaxRange.Text = "None";
+                this.txtWeaponHeadshotModifier.Text = "None";
+            }
+        }
+
         #region events
         private void rightZoomBorder_SizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -910,12 +1441,6 @@ namespace Damage_Calculator
             {
                 rightZoomBorder.Reset();
             }
-        }
-
-        private void visibilityMenu_CheckChanged(object sender, RoutedEventArgs e)
-        {
-            this.resetCanvas(true);
-            this.UpdateLayout();
         }
 
         private void radioModeShooting_Checked(object sender, RoutedEventArgs e)
@@ -942,88 +1467,95 @@ namespace Damage_Calculator
 
         private void mapImage_LayoutUpdated(object sender, EventArgs e)
         {
-            this.updateCirclePositions();
+            this.drawPointsAndConnectingLine();
         }
 
         private void mapImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (this.DrawMode == eDrawMode.Shooting)
             {
-                if (this.leftPoint == null)
-                    this.leftPoint = new MapPoint();
+                if (this.targetPoint == null)
+                    this.targetPoint = new MapPoint();
 
-                Point mousePos = Mouse.GetPosition(this.pointsCanvas);
-                this.pointsCanvas.Children.Remove(this.leftPoint.Circle);
+                Point mousePos = Mouse.GetPosition(this.mapCanvas);
+                this.canvasRemove(this.targetPoint.Circle);
 
-                var circle = this.getPointEllipse(this.leftPointColour);
+                var circle = this.getPointEllipse(this.leftClickPointColour);
 
-                this.pointsCanvas.Children.Add(circle);
+                this.canvasAdd(circle);
 
-                this.leftPoint.PercentageX = mousePos.X * 100f / this.pointsCanvas.ActualWidth;
-                this.leftPoint.PercentageY = mousePos.Y * 100f / this.pointsCanvas.ActualHeight;
-                this.leftPoint.PercentageScale = circle.Width * 100f / this.pointsCanvas.ActualWidth;
+                this.targetPoint.PercentageX = mousePos.X * 100f / this.mapCanvas.ActualWidth;
+                this.targetPoint.PercentageY = mousePos.Y * 100f / this.mapCanvas.ActualHeight;
+                this.targetPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
+                this.targetPoint.Z = this.currentMouseCoord.Z;
+                if(this.currentHeightLayer >= 0)
+                    // Associate area ID to see if we want just 2D distance in case one point has no area (and with that, Z value) with it
+                    this.targetPoint.AssociatedAreaID = (int)this.hoveredNavAreas[this.currentHeightLayer].ID;
+                else
+                    this.targetPoint.AssociatedAreaID = -1;
 
-                this.leftPoint.Circle = circle;
+                this.targetPoint.Circle = circle;
+                this.redrawLine = true;
 
-                this.updateCirclePositions();
+                this.drawPointsAndConnectingLine();
             }
             else if (this.DrawMode == eDrawMode.Bomb)
             {
-                if (this.bombCircle == null)
-                    this.bombCircle = new MapPoint();
+                if (this.bombPoint == null)
+                    this.bombPoint = new MapPoint();
 
-                Point mousePos = Mouse.GetPosition(this.pointsCanvas);
-                this.pointsCanvas.Children.Remove(this.bombCircle.Circle);
+                Point mousePos = Mouse.GetPosition(this.mapCanvas);
+                this.canvasRemove(this.bombPoint.Circle);
 
-                var circle = this.getBombEllipse(this.leftPointColour);
+                var circle = this.getBombEllipse(this.leftClickPointColour);
 
-                this.pointsCanvas.Children.Add(circle);
+                this.canvasAdd(circle);
 
-                this.bombCircle.PercentageX = mousePos.X * 100f / this.pointsCanvas.ActualWidth;
-                this.bombCircle.PercentageY = mousePos.Y * 100f / this.pointsCanvas.ActualHeight;
-                this.bombCircle.PercentageScale = circle.Width * 100f / this.pointsCanvas.ActualWidth;
+                this.bombPoint.PercentageX = mousePos.X * 100f / this.mapCanvas.ActualWidth;
+                this.bombPoint.PercentageY = mousePos.Y * 100f / this.mapCanvas.ActualHeight;
+                this.bombPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
+                this.bombPoint.Z = this.currentMouseCoord.Z;
+                if (this.currentHeightLayer >= 0)
+                    // Associate area ID to see if we want just 2D distance in case one point has no area (and with that, Z value) with it
+                    this.bombPoint.AssociatedAreaID = (int)this.hoveredNavAreas[this.currentHeightLayer].ID;
+                else
+                    this.bombPoint.AssociatedAreaID = -1;
 
-                this.bombCircle.Circle = circle;
+                this.bombPoint.Circle = circle;
 
-                this.updateCirclePositions();
+                this.redrawLine = true;
+
+                this.drawPointsAndConnectingLine();
             }
         }
 
         private void mapImage_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (this.rightPoint == null)
-                this.rightPoint = new MapPoint();
+            if (this.playerPoint == null)
+                this.playerPoint = new MapPoint();
 
-            Point mousePos = Mouse.GetPosition(this.pointsCanvas);
-            this.pointsCanvas.Children.Remove(this.rightPoint.Circle);
+            Point mousePos = Mouse.GetPosition(this.mapCanvas);
+            this.canvasRemove(this.playerPoint.Circle);
 
-            var circle = this.getPointEllipse(this.rightPointColour);
+            var circle = this.getPointEllipse(this.rightClickPointColour);
 
-            this.pointsCanvas.Children.Add(circle);
+            this.canvasAdd(circle);
 
-            this.rightPoint.PercentageX = mousePos.X * 100f / this.pointsCanvas.ActualWidth;
-            this.rightPoint.PercentageY = mousePos.Y * 100f / this.pointsCanvas.ActualHeight;
-            this.rightPoint.PercentageScale = circle.Width * 100f / this.pointsCanvas.ActualWidth;
+            this.playerPoint.PercentageX = mousePos.X * 100f / this.mapCanvas.ActualWidth;
+            this.playerPoint.PercentageY = mousePos.Y * 100f / this.mapCanvas.ActualHeight;
+            this.playerPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
+            this.playerPoint.Z = this.currentMouseCoord.Z;
+            if (this.currentHeightLayer >= 0)
+                // Associate area ID to see if we want just 2D distance in case one point has no area (and with that, Z value) with it
+                this.playerPoint.AssociatedAreaID = (int)this.hoveredNavAreas[this.currentHeightLayer].ID;
+            else
+                this.playerPoint.AssociatedAreaID = -1;
 
-            this.rightPoint.Circle = circle;
+            this.playerPoint.Circle = circle;
 
-            this.updateCirclePositions();
-        }
+            this.redrawLine = true;
 
-        private void changeTheme_Click(object sender, RoutedEventArgs e)
-        {
-            switch (int.Parse(((MenuItem)sender).Uid))
-            {
-                case 0: REghZyFramework.Themes.ThemesController.SetTheme(REghZyFramework.Themes.ThemesController.ThemeTypes.Dark);
-                    rectTop.Fill = rectSide.Fill = new SolidColorBrush(Colors.White);
-                    txtEasterEggMetres.Text = "Metres:";
-                    break;
-                case 1: REghZyFramework.Themes.ThemesController.SetTheme(REghZyFramework.Themes.ThemesController.ThemeTypes.Light);
-                    rectTop.Fill = rectSide.Fill = new SolidColorBrush(Colors.Black);
-                    txtEasterEggMetres.Text = "Meters:";
-                    break;
-            }
-            e.Handled = true;
+            this.drawPointsAndConnectingLine();
         }
 
         private void comboBoxMaps_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1055,6 +1587,7 @@ namespace Damage_Calculator
             var weapon = ((sender as ComboBox).SelectedItem as ComboBoxItem)?.Tag as CsgoWeapon;
 
             this.selectedWeapon = weapon;
+            this.fillWeaponInfo();
             settings_Updated(null, null);
         }
 
@@ -1074,38 +1607,32 @@ namespace Damage_Calculator
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-            if (this.mapImage.Source == null)
-                return;
-
-            var position = Mouse.GetPosition(mapImage);
-            if (position.X >= 0 && position.Y >= 0 && position.X <= mapImage.ActualWidth && position.Y <= mapImage.ActualHeight)
-            {
-                // Percentage on shown pixels
-                double diffPercX = position.X * 100f / this.mapImage.ActualWidth;
-                // Distance on original pixel scales
-                double diffPixelsOriginalX = diffPercX * (this.mapImage.Source as BitmapSource).PixelWidth / 100f;
-                // times scale multiplier
-                double unitsDifferenceX = diffPixelsOriginalX * this.loadedMap.MapSizeMultiplier;
-                txtCursorX.Text = Math.Round(this.loadedMap.UpperLeftWorldXCoordinate + unitsDifferenceX, 2).ToString(System.Globalization.CultureInfo.InvariantCulture);
-
-                // Percentage on shown pixels
-                double diffPercY = position.Y * 100f / this.mapImage.ActualWidth;
-                // Distance on original pixel scales
-                double diffPixelsOriginalY = diffPercY * (this.mapImage.Source as BitmapSource).PixelWidth / 100f;
-                // times scale multiplier
-                double unitsDifferenceY = diffPixelsOriginalY * this.loadedMap.MapSizeMultiplier;
-                txtCursorY.Text = Math.Round(this.loadedMap.UpperLeftWorldYCoordinate - unitsDifferenceY, 2).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            }
-            else
-            {
-                txtCursorX.Text = txtCursorY.Text = "0";
-            }
+            this.recalculateCoordinates();
         }
+
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
             {
-                Clipboard.SetText(txtCursorX.Text + " " + txtCursorY.Text);
+                Clipboard.SetText($"setpos_exact {this.currentMouseCoord.X.ToString(CultureInfo.InvariantCulture)} {this.currentMouseCoord.Y.ToString(CultureInfo.InvariantCulture)} {(this.currentMouseCoord.Z + 25).ToString(CultureInfo.InvariantCulture)}");
+            }
+            else if(e.Key == Key.PageUp)
+            {
+                if(this.currentHeightLayer >= 0 && this.currentHeightLayer < this.hoveredNavAreas.Count - 1)
+                {
+                    this.userHeightLayerOffset = 1;
+                    this.userChangedLayer = true;
+                    this.recalculateCoordinates();
+                }
+            }
+            else if(e.Key == Key.PageDown)
+            {
+                if (this.currentHeightLayer > 0)
+                {
+                    this.userHeightLayerOffset = -1;
+                    this.userChangedLayer = true;
+                    this.recalculateCoordinates();
+                }
             }
 
             // Pass it on for spacebar pan start
@@ -1125,9 +1652,19 @@ namespace Damage_Calculator
                 // We want space for us alone, so give no child element a piece of dat cake
                 e.Handled = true;
         }
-        private void filterMenu_CheckChanged(object sender, RoutedEventArgs e)
+
+        private void mnuOpenSettings_Click(object sender, RoutedEventArgs e)
         {
-            this.updateMapsWithCurrentFilter();
+            var settingsWindow = new wndSettings(this.loadedMap);
+            settingsWindow.Owner = this;
+            settingsWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            bool reloadWithNewSettings = settingsWindow.ShowDialog() == true;
+
+            if (reloadWithNewSettings)
+            {
+                // Settings *might* have changed (User pressed "Save" so just in case, reload with new settings)
+                this.canvasReload();
+            }
         }
         #endregion
     }

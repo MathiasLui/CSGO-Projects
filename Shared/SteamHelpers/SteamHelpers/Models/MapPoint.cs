@@ -14,6 +14,10 @@ namespace Shared.Models
 
         public double PercentageY { get; set; }
 
+        public double Z { get; set; }
+
+        public int AssociatedAreaID { get; set; } = -1;
+
         public double PercentageScale { get; set; }
     }
 }

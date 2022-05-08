@@ -190,6 +190,32 @@ namespace Shared.Models
             }
         }
 
+        /// <summary>
+        /// Gets whether this map has a NAV file associated with it.
+        /// Will only account for BSP-packed NAV file after calling parseBspData().
+        /// </summary>
+        public bool HasNavFile 
+        { 
+            get => this.BspFilePath != null || this.NavFileBspPacked;
+        }
+
+        /// <summary>
+        /// Gets whether this map has a AIN file associated with it.
+        /// Will only account for BSP-packed AIN file after calling parseBspData().
+        /// </summary>
+        public bool HasAinFile
+        {
+            get => this.AinFilePath != null || this.AinFileBspPacked;
+        }
+
+        /// <summary>
+        /// Gets whether this map has a BSP map file associated with it.
+        /// </summary>
+        public bool HasBspFile
+        {
+            get => this.BspFilePath != null;
+        }
+
         public List<PlayerSpawn> SpawnPoints { get; set; } = new List<PlayerSpawn>();
 
         public NavMesh? NavMesh { get; set; }

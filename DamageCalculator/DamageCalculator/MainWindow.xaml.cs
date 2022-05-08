@@ -196,11 +196,11 @@ namespace Damage_Calculator
                     continue;
 
                 // Filter file existence
-                if (map.BspFilePath == null && Globals.Settings.ShowMapsMissingBsp == false)
+                if (!map.HasBspFile && !Globals.Settings.ShowMapsMissingBsp)
                     continue;
-                if (map.NavFilePath == null && Globals.Settings.ShowMapsMissingNav == false)
+                if (!map.HasNavFile && !Globals.Settings.ShowMapsMissingNav)
                     continue;
-                if (map.AinFilePath == null && Globals.Settings.ShowMapsMissingAin == false)
+                if (!map.HasAinFile && !Globals.Settings.ShowMapsMissingAin)
                     continue;
 
                 newMap.Tag = map;

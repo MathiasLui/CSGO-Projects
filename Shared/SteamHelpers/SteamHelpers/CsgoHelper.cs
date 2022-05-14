@@ -235,11 +235,12 @@ namespace Shared
             Element items = vdfItems["items_game"]?["items"]!;
 
             if (prefabs == null || items == null)
+                // There is no prefab list or item list to read out
                 return null!;
 
             var weapons = new List<CsgoWeapon>();
 
-            foreach(var item in items.Children)
+            foreach (var item in items.Children)
             {
                 string? itemPrefab = item["prefab"]?.Value!;
                 string? itemName = item["name"].Value;
@@ -247,11 +248,25 @@ namespace Shared
                 if (itemPrefab == null || !itemName!.StartsWith("weapon_"))
                     continue;
 
+                // Here we're sure the item is supposed to be a weapon
+
                 var weapon = new CsgoWeapon();
                 weapon.ClassName = itemName;
 
-                if(this.tryPopulateWeapon(weapon, prefabs, itemPrefab))
+                // Handle weapon specific modifications before fetching its attributes
+                switch (weapon.ClassName)
                 {
+                    case "weapon_taser":
+                        weapon.DamageType = DamageType.Shock;
+                        break;
+                    default:
+                        weapon.DamageType = DamageType.Bullet;
+                        break;
+                }
+
+                if (this.tryPopulateWeapon(weapon, prefabs, itemPrefab))
+                {
+                    // Item has an initial prefab and is allowed based on the conditions met in isWeaponFireable()
                     weapons.Add(weapon);
                 }
             }
@@ -259,8 +274,29 @@ namespace Shared
             return weapons;
         }
 
+        private bool isWeaponFireable(CsgoWeapon weapon, List<string>? prefabTrace)
+        {
+            bool isWhitelisted = false;
+
+            if(prefabTrace != null)
+            {
+                // Stuff involving prefab trace here
+                if(prefabTrace.FirstOrDefault(pr => pr == "primary" || pr == "secondary") != null)
+                    // Allow any weapon in the primary or secondary slot
+                    isWhitelisted = true;
+            }
+
+            // Other
+            if(weapon.ClassName == "weapon_taser")
+                // Allow zeus, even though it's "equipment" and listed in the melee slot
+                isWhitelisted = true;
+
+            return isWhitelisted;
+        }
+
         private bool tryPopulateWeapon(CsgoWeapon weapon, Element prefabs, string prefabName, List<string>? prefabTrace = null)
         {
+            // Get the initial prefab specified in the item
             Element prefab = prefabs[prefabName];
 
             if (prefab == null)
@@ -269,16 +305,24 @@ namespace Shared
 
             string nextPrefab = prefab["prefab"]?.Value!;
 
-            if (prefab == null || (nextPrefab == null && prefabTrace?.FirstOrDefault(pr => pr == "primary" || pr == "secondary") == null))
+            if (nextPrefab == null)
                 // We've reached the end of abstraction but it wasn't found to be primary nor secondary
-                return false;
+                // However the taser is special because it's "equipment" and not primary or secondary.
+                // So we will treat it like a special lil guy and add him either way
+                if (!this.isWeaponFireable(weapon, prefabTrace))
+                {
+                    // We're done but we don't want this fucker included as a weapon
+                    return false;
+                }
 
             bool gatheredAllInfo = true;
 
             Element attributes = prefab["attributes"];
 
-            if (attributes == null)
-                return false;
+            if (attributes == null && nextPrefab != null)
+                // it might have no attributes but just skip to the next prefab in that case, because they might have attributes
+                // one example of this is the taser (zeus)
+                return this.tryPopulateWeapon(weapon, prefabs, nextPrefab, prefabTrace);
 
             // =========================== ATTRIBUTES =========================== //
 
@@ -365,6 +409,8 @@ namespace Shared
             // ================================================================== //
 
             if (gatheredAllInfo || nextPrefab == null)
+                // We've got all we need or we've reached the end of abstraction
+                // We're sure the weapon is for example either primary, secondary or it's the zeus, since it's treated as "equipment" instead
                 return true; // ?
 
             if (prefabTrace == null)

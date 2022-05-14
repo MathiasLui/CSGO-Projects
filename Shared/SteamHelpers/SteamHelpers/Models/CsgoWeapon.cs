@@ -45,5 +45,13 @@ namespace Shared.Models
         /// Gets or sets the multiplier of headshots by this weapon. At the point of writing this is "4" for all weapons except two.
         /// </summary>
         public float HeadshotModifier { get; set; } = -1;
+
+        /// <summary>
+        /// Gets or sets the type of damage done by this weapon.
+        /// Used for damage multipliers, since shock damage deals the same damage on every hitgroup.
+        /// </summary>
+        public DamageType DamageType { get; set; }
     }
+
+    public enum DamageType { Bullet, Shock }
 }

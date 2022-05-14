@@ -1055,51 +1055,59 @@ namespace Damage_Calculator
             // Range
             damage *= Math.Pow(this.selectedWeapon.DamageDropoff, double.Parse((this.unitsDistance / 500f).ToString()));
 
-            // Multipliers and armor penetration
-            if (radioHead.IsChecked == true)
+            switch (this.selectedWeapon.DamageType)
             {
-                // Headshot
-                damage *= this.selectedWeapon.HeadshotModifier;
+                case DamageType.Shock:
+                    // Deals the same damage everywhere
+                    break;
+                case DamageType.Bullet:
+                    // Multipliers and armor penetration
+                    if (radioHead.IsChecked == true)
+                    {
+                        // Headshot
+                        damage *= this.selectedWeapon.HeadshotModifier;
 
-                if (chkHelmet.IsChecked == true)
-                {
-                    // Has helmet
-                    double previousDamage = damage;
-                    damage *= this.selectedWeapon.ArmorPenetration / 100f;
-                    absorbedDamageByArmor = previousDamage - (int)damage;
-                    wasArmorHit = true;
-                }
-            }
-            else if (radioChestArms.IsChecked == true)
-            {
-                // Chest or arms
-                if (chkKevlar.IsChecked == true)
-                {
-                    // Has kevlar
-                    double previousDamage = damage;
-                    damage *= this.selectedWeapon.ArmorPenetration / 100f;
-                    absorbedDamageByArmor = previousDamage - (int)damage;
-                    wasArmorHit = true;
-                }
-            }
-            else if (radioStomach.IsChecked == true)
-            {
-                // Stomach
-                damage *= 1.25f;
+                        if (chkHelmet.IsChecked == true)
+                        {
+                            // Has helmet
+                            double previousDamage = damage;
+                            damage *= this.selectedWeapon.ArmorPenetration / 100f;
+                            absorbedDamageByArmor = previousDamage - (int)damage;
+                            wasArmorHit = true;
+                        }
+                    }
+                    else if (radioChestArms.IsChecked == true)
+                    {
+                        // Chest or arms
+                        if (chkKevlar.IsChecked == true)
+                        {
+                            // Has kevlar
+                            double previousDamage = damage;
+                            damage *= this.selectedWeapon.ArmorPenetration / 100f;
+                            absorbedDamageByArmor = previousDamage - (int)damage;
+                            wasArmorHit = true;
+                        }
+                    }
+                    else if (radioStomach.IsChecked == true)
+                    {
+                        // Stomach
+                        damage *= 1.25f;
 
-                if (chkKevlar.IsChecked == true)
-                {
-                    // Has kevlar
-                    double previousDamage = damage;
-                    damage *= this.selectedWeapon.ArmorPenetration / 100f;
-                    absorbedDamageByArmor = previousDamage - (int)damage;
-                    wasArmorHit = true;
-                }
-            }
-            else
-            {
-                // Legs
-                damage *= 0.75f;
+                        if (chkKevlar.IsChecked == true)
+                        {
+                            // Has kevlar
+                            double previousDamage = damage;
+                            damage *= this.selectedWeapon.ArmorPenetration / 100f;
+                            absorbedDamageByArmor = previousDamage - (int)damage;
+                            wasArmorHit = true;
+                        }
+                    }
+                    else
+                    {
+                        // Legs
+                        damage *= 0.75f;
+                    }
+                    break;
             }
 
             txtResult.Text = ((int)damage).ToString();

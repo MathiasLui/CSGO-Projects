@@ -82,6 +82,21 @@
                         <TextBlock x:Name="txtResult" Text="0" Foreground="IndianRed" FontSize="18" />
                         <TextBlock x:Name="txtResultArmor" Text="0" Foreground="CadetBlue" FontSize="14" />
                     </StackPanel>
+                    <StackPanel Margin="0,20,0,0">
+                        <TextBlock Text="Distance moved.." FontSize="14" FontWeight="Bold" />
+                        <StackPanel Margin="0,10,0,0">
+                            <TextBlock Text="..running:" FontSize="12" FontWeight="Bold" />
+                            <TextBlock x:Name="txtTimeRunning" Text="None" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="..walking:" FontSize="12" FontWeight="Bold" />
+                            <TextBlock x:Name="txtTimeWalking" Text="None" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="..crouching:" FontSize="12" FontWeight="Bold" />
+                            <TextBlock x:Name="txtTimeCrouching" Text="None" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
             <local:ZoomBorder x:Name="rightZoomBorder" Grid.Row="1" Grid.Column="1" Margin="10" ClipToBounds="True" SizeChanged="rightZoomBorder_SizeChanged">
@@ -100,76 +115,42 @@
                 <GroupBox x:Name="groupWeaponName" Header="WEAPON-NAME">
                     <StackPanel Orientation="Horizontal">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Base damage:" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Armor penetration:" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Damage dropoff:" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Max bullet range:" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Headshot modifier:" />
-                            </StackPanel>
+                            <TextBlock Text="Base damage:" />
+                            <TextBlock Text="... per minute:" />
+                            <TextBlock Text="Firing rate per minute:" />
+                            <TextBlock Text="Armor penetration:" />
+                            <TextBlock Text="Damage dropoff:" />
+                            <TextBlock Text="Max bullet range:" />
+                            <TextBlock Text="Headshot modifier:" />
+                            <TextBlock Text="Running speed:" />
                         </StackPanel>
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtWeaponBaseDamage" Text="None" Margin="10,0,0,0" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtWeaponArmorPenetration" Text="None" Margin="10,0,0,0" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtWeaponDamageDropoff" Text="None" Margin="10,0,0,0" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtWeaponMaxRange" Text="None" Margin="10,0,0,0" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtWeaponHeadshotModifier" Text="None" Margin="10,0,0,0" />
-                            </StackPanel>
+                        <StackPanel x:Name="stackWeaponInfo">
+                            <TextBlock x:Name="txtWeaponBaseDamage" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtWeaponBaseDamagePerMinute" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtWeaponFireRate" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtWeaponArmorPenetration" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtWeaponDamageDropoff" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtWeaponMaxRange" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtWeaponHeadshotModifier" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtWeaponRunningSpeed" Text="None" Margin="10,0,0,0" />
                         </StackPanel>
                     </StackPanel>
                 </GroupBox>
                 <GroupBox Header="NAV info" Margin="0,10,0,0">
                     <StackPanel Orientation="Horizontal">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Current layer:" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Average height:" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Area ID:" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Connections:" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Name:" />
-                            </StackPanel>
+                            <TextBlock Text="Current layer:" />
+                            <TextBlock Text="Average height:" />
+                            <TextBlock Text="Area ID:" />
+                            <TextBlock Text="Connections:" />
+                            <TextBlock Text="Name:" />
                         </StackPanel>
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtNavAreasAmount" Text="None" Margin="10,0,0,0" Foreground="IndianRed" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtNavAreaHeightPercentage" Text="None" Margin="10,0,0,0" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtNavAreaID" Text="None" Margin="10,0,0,0" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtNavAreaConnectionsAmount" Text="None" Margin="10,0,0,0" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="txtNavAreaPlace" Text="None" Margin="10,0,0,0" />
-                            </StackPanel>
+                        <StackPanel x:Name="stackNavInfo">
+                            <TextBlock x:Name="txtNavAreasAmount" Text="None" Margin="10,0,0,0" Foreground="IndianRed" />
+                            <TextBlock x:Name="txtNavAreaHeightPercentage" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtNavAreaID" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtNavAreaConnectionsAmount" Text="None" Margin="10,0,0,0" />
+                            <TextBlock x:Name="txtNavAreaPlace" Text="None" Margin="10,0,0,0" />
                         </StackPanel>
                     </StackPanel>
                 </GroupBox>

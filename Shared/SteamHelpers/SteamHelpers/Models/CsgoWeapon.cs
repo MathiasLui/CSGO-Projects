@@ -51,6 +51,16 @@ namespace Shared.Models
         /// Used for damage multipliers, since shock damage deals the same damage on every hitgroup.
         /// </summary>
         public DamageType DamageType { get; set; }
+
+        /// <summary>
+        /// Gets or sets the fire rate of this weapon (60 / cycletime => because cycletime is the amount of seconds needed for the weapon to cycle)
+        /// </summary>
+        public double FireRate { get; set; } = -1;
+
+        /// <summary>
+        /// Gets or sets the maximum speed a player can run at while holding this weapon, in units per second. 
+        /// </summary>
+        public int RunningSpeed { get; set; } = -1;
     }
 
     public enum DamageType { Bullet, Shock }

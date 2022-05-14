@@ -30,6 +30,8 @@ namespace Damage_Calculator
         public static string FilesPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CSGO Damage Calculator");
         public static readonly string WeaponsFileExtension = ".wpd";
 
+        private readonly string placeholderText = "None";
+
         /// <summary>
         /// Holds current in-game mouse coordinates when hovering over the map
         /// </summary>
@@ -358,6 +360,9 @@ namespace Damage_Calculator
                     this.textDistanceUnits.Text = "0";
                     this.txtResult.Text = "0";
                     this.txtResultArmor.Text = "0";
+                    this.txtTimeRunning.Text = "0";
+                    this.txtTimeWalking.Text = "0";
+                    this.txtTimeCrouching.Text = "0";
                 }
                 this.UpdateLayout();
                 this.canvasClear();
@@ -1039,6 +1044,32 @@ namespace Damage_Calculator
             return diffDistance3D;
         }
 
+        private void calculateDistanceDuration()
+        {
+            double timeRunning = this.unitsDistance / this.selectedWeapon.RunningSpeed;
+            double timeWalking = this.unitsDistance / (this.selectedWeapon.RunningSpeed * Shared.CsgoHelper.WalkModifier);
+            double timeCrouching = this.unitsDistance / (this.selectedWeapon.RunningSpeed * Shared.CsgoHelper.DuckModifier);
+
+            this.txtTimeRunning.Text = getTimeStringFromSeconds(timeRunning);
+            this.txtTimeWalking.Text = getTimeStringFromSeconds(timeWalking);
+            this.txtTimeCrouching.Text = getTimeStringFromSeconds(timeCrouching);
+        }
+
+        private string getTimeStringFromSeconds(double seconds)
+        {
+            string timeString = string.Empty;
+
+            int separatedMinutes = (int)(seconds / 60);
+            double separatedSeconds = seconds % 60;
+
+            if (separatedMinutes > 0)
+                timeString += $"{separatedMinutes} min, ";
+
+            timeString += $"{Math.Round(separatedSeconds, 2).ToString(CultureInfo.InvariantCulture)} sec";
+
+            return timeString;
+        }
+
         private void calculateAndUpdateShootingDamage()
         {
             double damage = this.selectedWeapon.BaseDamage;
@@ -1404,11 +1435,7 @@ namespace Damage_Calculator
             }
             else
             {
-                this.txtNavAreasAmount.Text = "None";
-                this.txtNavAreaHeightPercentage.Text = "None";
-                this.txtNavAreaID.Text = "None";
-                this.txtNavAreaConnectionsAmount.Text = "None";
-                this.txtNavAreaPlace.Text = "None";
+                this.resetNavInfo();
             }
         }
 
@@ -1418,20 +1445,30 @@ namespace Damage_Calculator
             {
                 this.groupWeaponName.Header = this.selectedWeapon.ClassName.Replace('_','-');
                 this.txtWeaponBaseDamage.Text = this.selectedWeapon.BaseDamage.ToString(CultureInfo.InvariantCulture);
-                this.txtWeaponArmorPenetration.Text = this.selectedWeapon.ArmorPenetration.ToString(CultureInfo.InvariantCulture);
-                this.txtWeaponDamageDropoff.Text = this.selectedWeapon.DamageDropoff.ToString(CultureInfo.InvariantCulture);
+                this.txtWeaponBaseDamagePerMinute.Text = this.selectedWeapon.FireRate < 0 ? "?" : (this.selectedWeapon.BaseDamage * this.selectedWeapon.FireRate).ToString(CultureInfo.InvariantCulture);
+                this.txtWeaponFireRate.Text = this.selectedWeapon.FireRate.ToString(CultureInfo.InvariantCulture);
+                this.txtWeaponArmorPenetration.Text = this.selectedWeapon.ArmorPenetration.ToString(CultureInfo.InvariantCulture) + " %";
+                this.txtWeaponDamageDropoff.Text = Math.Round(1d - this.selectedWeapon.DamageDropoff, 2).ToString(CultureInfo.InvariantCulture) + " %";
                 this.txtWeaponMaxRange.Text = this.selectedWeapon.MaxBulletRange.ToString(CultureInfo.InvariantCulture);
-                this.txtWeaponHeadshotModifier.Text = this.selectedWeapon.HeadshotModifier.ToString(CultureInfo.InvariantCulture);
+                this.txtWeaponHeadshotModifier.Text = this.selectedWeapon.DamageType != DamageType.Shock ? this.selectedWeapon.HeadshotModifier.ToString(CultureInfo.InvariantCulture) : placeholderText;
+                this.txtWeaponRunningSpeed.Text = this.selectedWeapon.RunningSpeed.ToString();
             }
             else
             {
-                this.groupWeaponName.Header = "WEAPON-NAME";
-                this.txtWeaponBaseDamage.Text = "None";
-                this.txtWeaponArmorPenetration.Text = "None";
-                this.txtWeaponDamageDropoff.Text = "None";
-                this.txtWeaponMaxRange.Text = "None";
-                this.txtWeaponHeadshotModifier.Text = "None";
+                this.resetWeaponInfo();
             }
+        }
+
+        private void resetWeaponInfo()
+        {
+            foreach (TextBlock x in this.stackWeaponInfo.Children)
+                x.Text = placeholderText;
+        }
+
+        private void resetNavInfo()
+        {
+            foreach (TextBlock x in this.stackNavInfo.Children)
+                x.Text = placeholderText;
         }
 
         #region events
@@ -1588,6 +1625,8 @@ namespace Damage_Calculator
                 this.calculateAndUpdateShootingDamage();
             else if (this.DrawMode == eDrawMode.Bomb)
                 calculateAndUpdateBombDamage();
+
+            this.calculateDistanceDuration();
         }
 
         private void comboWeapons_SelectionChanged(object sender, SelectionChangedEventArgs e)

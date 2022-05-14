@@ -15,6 +15,10 @@ namespace Shared
     {
         public string? CsgoPath { get; set; }
 
+        public static readonly float DuckModifier = 0.34f;
+
+        public static readonly float WalkModifier = 0.52f;
+
         /// <summary>
         /// Gets the prefixes allowed for maps when using <see cref="GetMaps"/>.
         /// </summary>
@@ -400,6 +404,38 @@ namespace Shared
                     if (float.TryParse(headshotModifier, NumberStyles.Any, CultureInfo.InvariantCulture, out float hs))
                     {
                         weapon.HeadshotModifier = hs;
+                    }
+                }
+                else
+                    gatheredAllInfo = false;
+            }
+
+            // Firing rate
+            if (weapon.FireRate == -1)
+            {
+                string cycleTime = attributes["cycletime"]?.Value!;
+                if (cycleTime != null)
+                {
+                    // Firing rate field exists
+                    if (double.TryParse(cycleTime, NumberStyles.Any, CultureInfo.InvariantCulture, out double ct))
+                    {
+                        weapon.FireRate = 60d / ct;
+                    }
+                }
+                else
+                    gatheredAllInfo = false;
+            }
+
+            // Running speed
+            if (weapon.RunningSpeed == -1)
+            {
+                string runningSpeed = attributes["max player speed"]?.Value!;
+                if (runningSpeed != null)
+                {
+                    // Running speed field exists
+                    if (int.TryParse(runningSpeed, NumberStyles.Any, CultureInfo.InvariantCulture, out int rs))
+                    {
+                        weapon.RunningSpeed = rs;
                     }
                 }
                 else

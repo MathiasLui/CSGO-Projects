@@ -174,6 +174,10 @@
                                 <TextBlock Text="Bomb radius:" />
                                 <TextBlock Margin="5,0,0,0" x:Name="txtBombRadius" Text="0" Foreground="IndianRed" />
                             </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Bomb spots:" />
+                                <TextBlock Margin="5,0,0,0" x:Name="txtAmountBombTargets" Text="0" Foreground="IndianRed" />
+                            </StackPanel>
                         </StackPanel>
                         <StackPanel Margin="0,10,0,0">
                             <TextBlock Text="Cursor position:" />

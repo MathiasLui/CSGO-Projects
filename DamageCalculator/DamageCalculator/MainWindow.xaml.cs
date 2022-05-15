@@ -406,6 +406,8 @@ namespace Damage_Calculator
                 this.txtBombMaxDamage.Text = this.txtBombRadius.Text = "None";
             }
 
+            this.txtAmountBombTargets.Text = map.AmountBombTargets.ToString(); // We always count these so it will just be 0 if no targets exist
+
             // Set the map's coordinates offset from the settings file in case we have a manual offset
             var mapOffsetMapping = Globals.Settings.MapCoordinateOffsets.FirstOrDefault(m => m.DDSFileName == System.IO.Path.GetFileNameWithoutExtension(map.MapImagePath));
             if (mapOffsetMapping != null)
@@ -440,6 +442,8 @@ namespace Damage_Calculator
             //  }
             //
 
+            map.AmountBombTargets = 0; // Just make sure we're counting from 0
+
             // Separate all entities, which temporarily removes curly braces from the start and/or end of entities
             string[] entities = map.EntityList.Split(new string[] { "}\n{" }, StringSplitOptions.None);
             for (int i = 0; i < entities.Length; i++)
@@ -473,6 +477,14 @@ namespace Damage_Calculator
                     }
                 }
 
+                // Check for amount of bomb sites, if available
+                if (className == "func_bomb_target")
+                {
+                    // Map contains at least one bomb target, meaning it's a defusal map, so count them
+                    map.AmountBombTargets++;
+                }
+
+                // Check for spawns
                 if (className == "info_player_terrorist" || className == "info_player_counterterrorist")
                 {
                     // Entity is spawn point

@@ -174,18 +174,30 @@ namespace Shared.Models
         /// </summary>
         public MapCustomOverwriteMapping MapOverwrite { get; set; } = new();
 
+        /// <summary>
+        /// Gets whether or not there are any terrorist spawns that have
+        /// a higher priority than others.
+        /// </summary>
         public bool HasPrioritySpawnsT
         {
             get
             {
+                // If there are no spawns with higher priority,
+                // then all of them are marked as priority.
                 return this.AmountPrioritySpawnsT < this.AmountSpawnsT;
             }
         }
 
+        /// <summary>
+        /// Gets whether or not there are any counter-terrorist spawns that have
+        /// a higher priority than others.
+        /// </summary>
         public bool HasPrioritySpawnsCT
         {
             get
             {
+                // If there are no spawns with higher priority,
+                // then all of them are marked as priority.
                 return this.AmountPrioritySpawnsCT < this.AmountSpawnsCT;
             }
         }
@@ -216,8 +228,19 @@ namespace Shared.Models
             get => this.BspFilePath != null;
         }
 
+        /// <summary>
+        /// Gets or sets the player spawns for this map, for both teams.
+        /// </summary>
         public List<PlayerSpawn> SpawnPoints { get; set; } = new List<PlayerSpawn>();
 
+        /// <summary>
+        /// Gets or sets the navigation mesh for bots (NAV files).
+        /// </summary>
         public NavMesh? NavMesh { get; set; }
+
+        /// <summary>
+        /// Gets or sets the amount of bomb target brushes (bomb sites) for this map.
+        /// </summary>
+        public int AmountBombTargets { get; set; } = 0;
     }
 }

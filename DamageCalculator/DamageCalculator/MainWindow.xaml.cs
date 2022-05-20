@@ -14,8 +14,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using Shared.Models;
-using Shared.ZatVdfParser;
+using SteamShared.Models;
+using SteamShared.ZatVdfParser;
 using System.Xml.Serialization;
 using System.Globalization;
 using System.Collections.ObjectModel;
@@ -94,8 +94,8 @@ namespace Damage_Calculator
             InitializeComponent();
             Globals.LoadSettings();
 
-            Shared.Globals.Settings.CsgoHelper.CsgoPath = Shared.Globals.Settings.SteamHelper.GetGamePathFromExactName("Counter-Strike: Global Offensive");
-            if (Shared.Globals.Settings.CsgoHelper.CsgoPath == null)
+            SteamShared.Globals.Settings.CsgoHelper.CsgoPath = SteamShared.Globals.Settings.SteamHelper.GetGamePathFromExactName("Counter-Strike: Global Offensive");
+            if (SteamShared.Globals.Settings.CsgoHelper.CsgoPath == null)
             {
                 MessageBox.Show("Make sure you have installed CS:GO and Steam correctly.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 this.Close();
@@ -289,13 +289,13 @@ namespace Damage_Calculator
 
         private void BgWorker_DoWork(object sender, DoWorkEventArgs e)
         {
-            var maps = Shared.Globals.Settings.CsgoHelper.GetMaps();
+            var maps = SteamShared.Globals.Settings.CsgoHelper.GetMaps();
             bgWorker.ReportProgress(0, maps);
             var serializer = new XmlSerializer(typeof(List<CsgoWeapon>));
 
             List<CsgoWeapon> weapons;
 
-            string itemsFile = System.IO.Path.Combine(Shared.Globals.Settings.CsgoHelper.CsgoPath, "csgo\\scripts\\items\\items_game.txt");
+            string itemsFile = System.IO.Path.Combine(SteamShared.Globals.Settings.CsgoHelper.CsgoPath, "csgo\\scripts\\items\\items_game.txt");
             string saveFileDir = MainWindow.FilesPath;
             string currentHash = calculateMD5(itemsFile);
 
@@ -329,7 +329,7 @@ namespace Damage_Calculator
             }
 
             // We didn't return cause we didn't find an up-to-date WPD file so parse new weapon data
-            weapons = Shared.Globals.Settings.CsgoHelper.GetWeapons();
+            weapons = SteamShared.Globals.Settings.CsgoHelper.GetWeapons();
             serializer.Serialize(new FileStream(System.IO.Path.Combine(saveFileDir, currentHash + MainWindow.WeaponsFileExtension), FileMode.Create), weapons);
             bgWorker.ReportProgress(1, weapons);
         }
@@ -426,7 +426,7 @@ namespace Damage_Calculator
             map.AmountHostages = 0;
             map.SpawnPoints.Clear();
 
-            map.EntityList = Shared.Globals.Settings.CsgoHelper.ReadEntityListFromBsp(map.BspFilePath);
+            map.EntityList = SteamShared.Globals.Settings.CsgoHelper.ReadEntityListFromBsp(map.BspFilePath);
 
             // Current format for one entity is: 
             //
@@ -543,7 +543,7 @@ namespace Damage_Calculator
             if (map.NavFilePath == null || map.AinFilePath == null)
             {
                 // If either no NAV or no AIN file has been found, try to update them via the BSP pakfile
-                var navFilesFound = Shared.Globals.Settings.CsgoHelper.ReadIfPackedNavFilesInBsp(map.BspFilePath);
+                var navFilesFound = SteamShared.Globals.Settings.CsgoHelper.ReadIfPackedNavFilesInBsp(map.BspFilePath);
                 if (navFilesFound.Item1)
                 {
                     map.NavFileBspPacked = true;
@@ -560,7 +560,7 @@ namespace Damage_Calculator
             if(map.NavFilePath != null && !map.NavFileBspPacked)
             {
                 // Nav file not packed and a file path for it is existent so parse it here
-                map.NavMesh = Shared.NavFile.Parse(new FileStream(map.NavFilePath, FileMode.Open));
+                map.NavMesh = SteamShared.NavFile.Parse(new FileStream(map.NavFilePath, FileMode.Open));
             }
         }
 
@@ -701,14 +701,14 @@ namespace Damage_Calculator
                 }
             }
 
-            if (Globals.Settings.NavDisplayMode != Shared.NavDisplayModes.None && navMeshesInCanvas.Count > 0 && this.mapCanvas.ActualWidth > 0 && this.mapCanvas.ActualHeight > 0)
+            if (Globals.Settings.NavDisplayMode != SteamShared.NavDisplayModes.None && navMeshesInCanvas.Count > 0 && this.mapCanvas.ActualWidth > 0 && this.mapCanvas.ActualHeight > 0)
                 // Canvas has already settled - no need to redraw
                 return;
 
             // Remove all NAV meshes from canvas
             navMeshesInCanvas.ForEach(navMesh => canvasRemove(navMesh));
 
-            if (Globals.Settings.NavDisplayMode == Shared.NavDisplayModes.None)
+            if (Globals.Settings.NavDisplayMode == SteamShared.NavDisplayModes.None)
                 // Don't draw and NAV areas if disabled
                 return;
 
@@ -721,7 +721,7 @@ namespace Damage_Calculator
             {
                 // Don't draw area if it's not in the threshold that's set in the settings
                 // First get the percentage of the average area height between the min and max area
-                double heightPercentage = Shared.Globals.Map(area.MedianPosition.Z, this.loadedMap.NavMesh.MinZ ?? 0, this.loadedMap.NavMesh.MaxZ ?? 0, 0, 1);
+                double heightPercentage = SteamShared.Globals.Map(area.MedianPosition.Z, this.loadedMap.NavMesh.MinZ ?? 0, this.loadedMap.NavMesh.MaxZ ?? 0, 0, 1);
                 if (heightPercentage < Globals.Settings.ShowNavAreasAbove || heightPercentage > Globals.Settings.ShowNavAreasBelow)
                     continue;
 
@@ -1059,8 +1059,8 @@ namespace Damage_Calculator
         private void calculateDistanceDuration()
         {
             double timeRunning = this.unitsDistance / this.selectedWeapon.RunningSpeed;
-            double timeWalking = this.unitsDistance / (this.selectedWeapon.RunningSpeed * Shared.CsgoHelper.WalkModifier);
-            double timeCrouching = this.unitsDistance / (this.selectedWeapon.RunningSpeed * Shared.CsgoHelper.DuckModifier);
+            double timeWalking = this.unitsDistance / (this.selectedWeapon.RunningSpeed * SteamShared.CsgoHelper.WalkModifier);
+            double timeCrouching = this.unitsDistance / (this.selectedWeapon.RunningSpeed * SteamShared.CsgoHelper.DuckModifier);
 
             this.txtTimeRunning.Text = getTimeStringFromSeconds(timeRunning);
             this.txtTimeWalking.Text = getTimeStringFromSeconds(timeWalking);
@@ -1254,8 +1254,8 @@ namespace Damage_Calculator
 
             foreach (Vector3[] group in groups)
             {
-                float xWeight = Shared.Globals.Map(x, group[1].X, group[0].X, 0, 1);
-                float yWeight = Shared.Globals.Map(y, group[2].Y, group[0].Y, 0, 1);
+                float xWeight = SteamShared.Globals.Map(x, group[1].X, group[0].X, 0, 1);
+                float yWeight = SteamShared.Globals.Map(y, group[2].Y, group[0].Y, 0, 1);
                 float combinedWeight = xWeight * yWeight;
 
                 resultHeight += combinedWeight * group[0].Z;
@@ -1404,21 +1404,21 @@ namespace Damage_Calculator
             else
             {
                 // Map average area height between two configurable colours
-                byte newA = (byte)Shared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.A, Globals.Settings.NavHighColour.A);
-                byte newR = (byte)Shared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.R, Globals.Settings.NavHighColour.R);
-                byte newG = (byte)Shared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.G, Globals.Settings.NavHighColour.G);
-                byte newB = (byte)Shared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.B, Globals.Settings.NavHighColour.B);
+                byte newA = (byte)SteamShared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.A, Globals.Settings.NavHighColour.A);
+                byte newR = (byte)SteamShared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.R, Globals.Settings.NavHighColour.R);
+                byte newG = (byte)SteamShared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.G, Globals.Settings.NavHighColour.G);
+                byte newB = (byte)SteamShared.Globals.Map(area.MedianPosition.Z, loadedMap.NavMesh.MinZ ?? 0, loadedMap.NavMesh.MaxZ ?? 0, Globals.Settings.NavLowColour.B, Globals.Settings.NavHighColour.B);
                 newColour = Color.FromArgb(newA, newR, newG, newB);
             }
 
             switch (Globals.Settings.NavDisplayMode)
             {
-                case Shared.NavDisplayModes.Wireframe:
+                case SteamShared.NavDisplayModes.Wireframe:
                     pathOfArea.Stroke = new SolidColorBrush(newColour);
                     pathOfArea.StrokeThickness = 1;
                     pathOfArea.Fill = null;
                     break;
-                case Shared.NavDisplayModes.Filled:
+                case SteamShared.NavDisplayModes.Filled:
                     pathOfArea.Stroke = null;
                     pathOfArea.StrokeThickness = 0;
                     pathOfArea.Fill = new SolidColorBrush(newColour);
@@ -1440,7 +1440,7 @@ namespace Damage_Calculator
             if (this.hoveredNavAreas.Count > 0)
             {
                 this.txtNavAreasAmount.Text = $"{(this.currentHeightLayer < 0 ? 0 : this.currentHeightLayer + 1)}/{this.hoveredNavAreas.Count}";
-                this.txtNavAreaHeightPercentage.Text = Math.Round(Shared.Globals.Map(this.hoveredNavAreas[this.currentHeightLayer].MedianPosition.Z, this.loadedMap.NavMesh.MinZ ?? 0, this.loadedMap.NavMesh.MaxZ ?? 0, 0, 100), 1).ToString(CultureInfo.InvariantCulture) + " %";
+                this.txtNavAreaHeightPercentage.Text = Math.Round(SteamShared.Globals.Map(this.hoveredNavAreas[this.currentHeightLayer].MedianPosition.Z, this.loadedMap.NavMesh.MinZ ?? 0, this.loadedMap.NavMesh.MaxZ ?? 0, 0, 100), 1).ToString(CultureInfo.InvariantCulture) + " %";
                 this.txtNavAreaID.Text = this.hoveredNavAreas[this.currentHeightLayer].ID.ToString();
                 this.txtNavAreaConnectionsAmount.Text = this.hoveredNavAreas[this.currentHeightLayer].ConnectionData.Sum(direction => direction.Count).ToString();
                 this.txtNavAreaPlace.Text = this.hoveredNavAreas[this.currentHeightLayer].PlaceID == 0 ? "None" : this.loadedMap.NavMesh.Header.PlacesNames[this.hoveredNavAreas[this.currentHeightLayer].PlaceID - 1];

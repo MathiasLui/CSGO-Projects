@@ -17,7 +17,7 @@ namespace Damage_Calculator
         // VISUAL SETTINGS
 
         public REghZyFramework.Themes.ThemesController.ThemeTypes Theme { get; set; } = REghZyFramework.Themes.ThemesController.ThemeTypes.Dark;
-        public List<Shared.Models.MapCustomOverwriteMapping> MapCoordinateOffsets { get; set; } = new();
+        public List<SteamShared.Models.MapCustomOverwriteMapping> MapCoordinateOffsets { get; set; } = new();
         public bool ShowBombSites { get; set; } = true;
         public bool ShowSpawnAreas { get; set; } = true;
         public bool ShowStandardSpawns { get; set; } = true;
@@ -27,7 +27,7 @@ namespace Damage_Calculator
         public System.Windows.Media.Color NavLowColour { get; set; } = System.Windows.Media.Color.FromArgb(255, 20, 20, 20);
         public System.Windows.Media.Color NavHighColour { get; set; } = System.Windows.Media.Color.FromArgb(140, 255, 255, 255);
         public System.Windows.Media.Color NavHoverColour { get; set; } = System.Windows.Media.Color.FromArgb(140, 255, 165, 0);
-        public Shared.NavDisplayModes NavDisplayMode { get; set; } = Shared.NavDisplayModes.None;
+        public SteamShared.NavDisplayModes NavDisplayMode { get; set; } = SteamShared.NavDisplayModes.None;
         public double ShowNavAreasAbove { get; set; } = 0;
         public double ShowNavAreasBelow { get; set; } = 1;
 

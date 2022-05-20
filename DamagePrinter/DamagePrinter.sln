@@ -5,9 +5,9 @@ VisualStudioVersion = 17.1.32407.343
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DamagePrinter", "DamagePrinter\DamagePrinter.csproj", "{AF6F5837-94D3-4D44-9D1C-6B5CD600C698}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SteamShared", "..\Shared\SteamHelpers\SteamHelpers\SteamShared.csproj", "{4DB55154-E33B-49D8-BE05-DC11CA5B32A4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SteamShared", "..\SteamShared\SteamShared\SteamShared\SteamShared.csproj", "{4DB55154-E33B-49D8-BE05-DC11CA5B32A4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoreSoft.MathExpressions", "..\Shared\LoreSoft.MathExpressions\LoreSoft.MathExpressions.csproj", "{B6813448-FCE2-429C-81B5-9722FEA839B8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoreSoft.MathExpressions", "..\SteamShared\LoreSoft.MathExpressions\LoreSoft.MathExpressions.csproj", "{B6813448-FCE2-429C-81B5-9722FEA839B8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

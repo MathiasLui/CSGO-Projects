@@ -13,8 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Shared\LoreSoft.MathExpressions\LoreSoft.MathExpressions.csproj" />
-    <ProjectReference Include="..\..\Shared\SteamHelpers\SteamHelpers\SteamShared.csproj" />
+    <ProjectReference Include="..\..\SteamShared\LoreSoft.MathExpressions\LoreSoft.MathExpressions.csproj" />
+    <ProjectReference Include="..\..\SteamShared\SteamShared\SteamShared\SteamShared.csproj" />
   </ItemGroup>
 
 </Project>

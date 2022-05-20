@@ -27,14 +27,14 @@ namespace Damage_Calculator
         /// <summary>
         /// We need this to set the map coordinate offsets for each map respectively.
         /// </summary>
-        private Shared.Models.CsgoMap currentMap = null;
+        private SteamShared.Models.CsgoMap currentMap = null;
 
         private string getCurrentMapDDSName()
         {
             return System.IO.Path.GetFileNameWithoutExtension(currentMap.MapImagePath);
         }
 
-        public wndSettings(Shared.Models.CsgoMap currentMap)
+        public wndSettings(SteamShared.Models.CsgoMap currentMap)
         {
             InitializeComponent();
             this.currentMap = currentMap;
@@ -80,7 +80,7 @@ namespace Damage_Calculator
             this.colourNavHigh.SelectedColor = this.settings.NavHighColour;
             this.colourNavHover.SelectedColor = this.settings.NavHoverColour;
             
-            foreach(string navDisplayMode in Enum.GetNames(typeof(Shared.NavDisplayModes)))
+            foreach(string navDisplayMode in Enum.GetNames(typeof(SteamShared.NavDisplayModes)))
             {
                 comboNavDisplayModes.Items.Add(navDisplayMode);
                 if (navDisplayMode == Enum.GetName(this.settings.NavDisplayMode))
@@ -124,7 +124,7 @@ namespace Damage_Calculator
             }
             else
             {
-                this.settings.MapCoordinateOffsets.Add(new Shared.Models.MapCustomOverwriteMapping { DDSFileName = getCurrentMapDDSName(), CoordOffset = newCoords, MapScale = (float)this.intCurrentMapMultiplierOverride.Value });
+                this.settings.MapCoordinateOffsets.Add(new SteamShared.Models.MapCustomOverwriteMapping { DDSFileName = getCurrentMapDDSName(), CoordOffset = newCoords, MapScale = (float)this.intCurrentMapMultiplierOverride.Value });
             }
             this.currentMap.MapOverwrite.CoordOffset = newCoords;
             this.currentMap.MapOverwrite.MapScale = (float)this.intCurrentMapMultiplierOverride.Value;
@@ -140,7 +140,7 @@ namespace Damage_Calculator
             this.settings.NavHighColour = this.colourNavHigh.SelectedColor ?? Globals.Settings.NavHighColour;
             this.settings.NavHoverColour = this.colourNavHover.SelectedColor ?? Globals.Settings.NavHoverColour;
 
-            this.settings.NavDisplayMode = (Shared.NavDisplayModes)Enum.Parse(typeof(Shared.NavDisplayModes), comboNavDisplayModes.SelectedItem.ToString());
+            this.settings.NavDisplayMode = (SteamShared.NavDisplayModes)Enum.Parse(typeof(SteamShared.NavDisplayModes), comboNavDisplayModes.SelectedItem.ToString());
 
             this.settings.ShowNavAreasAbove = sliderNavAbove.Value / 100f;
             this.settings.ShowNavAreasBelow = sliderNavBelow.Value / 100f;

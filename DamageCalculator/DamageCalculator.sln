@@ -5,7 +5,7 @@ VisualStudioVersion = 17.1.32228.430
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DamageCalculator", "DamageCalculator\DamageCalculator.csproj", "{7A7AE40F-8677-44E3-873A-4AB7C9FCFEB4}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SteamHelpers", "..\Shared\SteamHelpers\SteamHelpers\SteamHelpers.csproj", "{3632D445-DC7D-43FC-AC66-8503F50FCA2A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SteamShared", "..\SteamShared\SteamShared\SteamShared\SteamShared.csproj", "{3632D445-DC7D-43FC-AC66-8503F50FCA2A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

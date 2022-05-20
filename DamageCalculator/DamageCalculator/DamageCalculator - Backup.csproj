@@ -37,7 +37,7 @@
     <Resource Include="icon_b_site.png" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Shared\SteamHelpers\SteamHelpers\SteamHelpers.csproj" />
+    <ProjectReference Include="..\..\SteamShared\SteamShared\SteamShared\SteamShared.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Gameloop.Vdf" Version="0.6.1" />

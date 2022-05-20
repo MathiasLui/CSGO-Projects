@@ -5,7 +5,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.IO;
 
-namespace Shared
+namespace SteamShared
 {
     #region DDSImage Class
     public class DDSImage : IDisposable

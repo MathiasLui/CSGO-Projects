@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Shared.ZatVdfParser
+namespace SteamShared.ZatVdfParser
 {
     public class VDFFile
     {
@@ -55,7 +55,7 @@ namespace Shared.ZatVdfParser
                 string? line = null;
                 while ((line = reader.ReadLine()) != null)
                 {
-                    if (line.StartsWith("\0"))
+                    if (line.StartsWith("\0", StringComparison.Ordinal))
                         return;
 
                     line = line.Trim();

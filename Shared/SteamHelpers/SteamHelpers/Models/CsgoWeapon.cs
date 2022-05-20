@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 
-namespace Shared.Models
+namespace SteamShared.Models
 {
     public class CsgoWeapon
     {

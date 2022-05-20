@@ -4,9 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Shared.Models;
+using SteamShared.Models;
 
-namespace Shared
+namespace SteamShared
 {
     public enum NavDisplayModes { None, Wireframe, Filled }
 

@@ -4,11 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Shared.ZatVdfParser;
+using SteamShared.ZatVdfParser;
 using Microsoft.Win32;
-using Shared.Models;
+using SteamShared.Models;
 
-namespace Shared
+namespace SteamShared
 {
     public class SteamHelper
     {
@@ -75,7 +75,7 @@ namespace Shared
         }
 
         /// <summary>
-        /// Forcefully tries to update the <see cref="SteamPath"/> property with the current Steam path, even if it should be already set.
+        /// Forcefully tries to update the <see cref="SteamLibraries"/> property with the current Steam libraries, even if they should be already set.
         /// </summary>
         public void UpdateSteamLibraries()
         {

@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SteamShared
+namespace SteamShared.SourceConfig
 {
-    public class SourceCFG
+    public class SourceCFGCommandBase
     {
     }
 }

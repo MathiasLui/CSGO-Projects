@@ -99,7 +99,9 @@ namespace SteamShared.SourceConfig
                             // We've reached end of line, a gap between commands or just padding, a quote or the end of command, always break at newlines or semis
 
                             // We might be at the first unquoted space after a command as well, this would mean... oh yeah! we finally finished fetching that command name!
-                            cmdNameParsed = true;
+                            // But if there's unwanted whitespaces BEFORE the command we would break prematurely, so make sure it actually has content
+                            if(!cmdNameParsed && !string.IsNullOrWhiteSpace(cmdString.ToString()))
+                                cmdNameParsed = true;
 
                             wasInQuoted = false;
                             if (curChar == '\"')

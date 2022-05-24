@@ -1,5 +1,8 @@
 # CSGO-Projects
 
+## Damage Calculator
+* Maybe add a path-drawing mode additionally to Bomb and Shooting mode
+
 ## Damage Printer
 * Needs a recode because of fugly code, probably in WPF
 * Also remove the extra features outside of damage printing

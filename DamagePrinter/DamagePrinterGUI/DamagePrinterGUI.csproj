@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+	<Version>0.1.0</Version>
+	<Authors>Mathias Lui</Authors>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <SignAssembly>False</SignAssembly>
+  </PropertyGroup>
+
+</Project>

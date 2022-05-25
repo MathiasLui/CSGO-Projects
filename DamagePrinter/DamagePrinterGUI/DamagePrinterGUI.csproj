@@ -10,4 +10,8 @@
     <SignAssembly>False</SignAssembly>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\SteamShared\SteamShared\SteamShared\SteamShared.csproj" />
+  </ItemGroup>
+
 </Project>

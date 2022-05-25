@@ -214,53 +214,53 @@ namespace SteamShared
 
         private void populateGameInfo(SteamGame game, Element appStateVdf)
         {
-            game.Name = appStateVdf["name"].Value;
+            game.Name = appStateVdf["name"]?.Value;
 
-            game.InstallFolderName = appStateVdf["installdir"].Value;
+            game.InstallFolderName = appStateVdf["installdir"]?.Value;
 
-            if (int.TryParse(appStateVdf["appid"].Value, out int appId))
+            if (int.TryParse(appStateVdf["appid"]?.Value, out int appId))
             {
                 game.AppId = appId;
             }
 
-            if (int.TryParse(appStateVdf["StateFlags"].Value, out int stateFlags))
+            if (int.TryParse(appStateVdf["StateFlags"]?.Value, out int stateFlags))
             {
                 game.GameState = stateFlags;
             }
 
-            if (long.TryParse(appStateVdf["LastUpdated"].Value, out long lastUpdated))
+            if (long.TryParse(appStateVdf["LastUpdated"]?.Value, out long lastUpdated))
             {
                 game.LastUpdated = fromUnixFormat(lastUpdated);
             }
 
-            if (long.TryParse(appStateVdf["LastOwner"].Value, out long lastOwner))
+            if (long.TryParse(appStateVdf["LastOwner"]?.Value, out long lastOwner))
             {
                 game.LastOwnerSteam64Id = lastOwner;
             }
 
-            if (long.TryParse(appStateVdf["BytesToDownload"].Value, out long bytesToDownload))
+            if (long.TryParse(appStateVdf["BytesToDownload"]?.Value, out long bytesToDownload))
             {
                 game.BytesToDownload = bytesToDownload;
             }
 
-            if (long.TryParse(appStateVdf["BytesDownloaded"].Value, out long bytesDownloaded))
+            if (long.TryParse(appStateVdf["BytesDownloaded"]?.Value, out long bytesDownloaded))
             {
                 game.BytesDownloaded = bytesDownloaded;
             }
 
-            if (long.TryParse(appStateVdf["BytesToStage"].Value, out long bytesToStage))
+            if (long.TryParse(appStateVdf["BytesToStage"]?.Value, out long bytesToStage))
             {
                 game.BytesToStage = bytesToStage;
             }
 
-            if (long.TryParse(appStateVdf["BytesStaged"].Value, out long bytesStaged))
+            if (long.TryParse(appStateVdf["BytesStaged"]?.Value, out long bytesStaged))
             {
                 game.BytesStaged = bytesStaged;
             }
 
-            game.KeepAutomaticallyUpdated = appStateVdf["AutoUpdateBehavior"].Value != "0";
+            game.KeepAutomaticallyUpdated = appStateVdf["AutoUpdateBehavior"]?.Value != "0";
 
-            game.AllowOtherUpdatesWhileRunning = appStateVdf["AllowOtherDownloadsWhileRunning"].Value != "0";
+            game.AllowOtherUpdatesWhileRunning = appStateVdf["AllowOtherDownloadsWhileRunning"]?.Value != "0";
         }
         #endregion
     }

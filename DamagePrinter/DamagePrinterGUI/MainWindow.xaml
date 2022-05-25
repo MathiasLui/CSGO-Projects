@@ -1,15 +1,30 @@
-﻿<Window x:Class="DamagePrinterGUI.MainWindow"
+﻿<Window x:Name="window" x:Class="DamagePrinterGUI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DamagePrinterGUI"
         mc:Ignorable="d"
-        Title="CS:GO Damage Printer" Height="355" Width="247"
+        Title="CS:GO Damage Printer" Height="436" Width="527"
         ResizeMode="NoResize"
-        Style="{DynamicResource CustomWindowStyle}">
+        Style="{DynamicResource CustomWindowStyle}"
+        Loaded="window_Loaded"
+        Closing="window_Closing">
     <Grid Margin="10">
-        <StackPanel>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition Height="15" />
+        </Grid.RowDefinitions>
+        <!-- Left side of window -->
+        <StackPanel Margin="5">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="CS:GO folder found: " />
+                <TextBlock x:Name="lblCsgoFolderFound" Text="No" />
+            </StackPanel>
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="CS:GO window found: " />
                 <TextBlock x:Name="lblCsgoWindowFound" Text="No" />
@@ -18,7 +33,35 @@
                 <TextBlock Text="Console log found: " />
                 <TextBlock x:Name="lblConsoleLogFound" Text="No" />
             </StackPanel>
-            <TextBlock />
+            <!-- Only print when... -->
+            <GroupBox Margin="0,10,0,0" Header="Only print when..">
+                <StackPanel>
+                    <TextBlock Text="the damage dealt is at least:" />
+                    <StackPanel Orientation="Horizontal">
+                        <Slider x:Name="sliderMinimumDealtDamage" Minimum="0" Maximum="100" Value="{Binding Settings.MinimumDealtDamage, ElementName=window}" Width="180" />
+                        <TextBlock Margin="5,0,0,0" Text="{Binding Value, ElementName=sliderMinimumDealtDamage}" />
+                    </StackPanel>
+                    <TextBlock Margin="0,10,0,0" Text="the damage dealt to me is at least:" />
+                    <StackPanel Orientation="Horizontal">
+                        <Slider x:Name="sliderMinimumReceivedDamage" Minimum="0" Maximum="100" Value="{Binding Settings.MinimumReceivedDamage, ElementName=window}" Width="180" />
+                        <TextBlock Margin="5,0,0,0" Text="{Binding Value, ElementName=sliderMinimumReceivedDamage}" />
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+            <!-- More properties -->
+            <CheckBox x:Name="chkPrintDeadPlayers" IsChecked="{Binding Settings.PrintDeadPlayers, ElementName=window}" Margin="0,10,0,0" Content="Print dead players" ToolTip="You can only see damage you dealt by yourself, so if someone got 70 damage by someone else and you deal 50 and kill him, the program doesn't see him as dead and prints it anyway." />
+            <CheckBox x:Name="chkWithholdDuplicateConsoleOutputs" IsChecked="{Binding Settings.WithholdDuplicateConsoleOutputs, ElementName=window}" Margin="0,5,0,0" Content="Withhold duplicate console outputs" ToolTip="For example when you die, and when the round ends, the damage is printed again. This option disables that." />
+            <CheckBox x:Name="chkPrintAmountOfShots" IsChecked="{Binding Settings.PrintAmountOfShots, ElementName=window}" Margin="0,5,0,0" Content="Print amount of shots for damage" ToolTip="Prints the amount of shots one used to deal the given damage." />
+            <CheckBox x:Name="chkUseSpecificTerms" IsChecked="{Binding Settings.UseSpecificTerms, ElementName=window}" Margin="0,5,0,0" Content="Use more specific terms" ToolTip="Uses 'tagged', 'lit' and 'one-shot' to distinguish more between damages." />
+            <CheckBox x:Name="chkPrintIngameChat" IsChecked="{Binding Settings.PrintIngameChat, ElementName=window}" Margin="0,5,0,0" Content="Print in in-game chat" ToolTip="Prints to the in-game chat. Which chat is used depends on the setting below. If off, it will only print it to the text box to the right." />
+            <CheckBox x:Name="chkPrintTeamChat" IsChecked="{Binding Settings.PrintTeamChat, ElementName=window}" Margin="0,5,0,0" Content="Print in team-chat" ToolTip="Prints in team-chat instead of all-chat, above setting must be on for this to matter." IsEnabled="{Binding IsChecked, ElementName=chkPrintIngameChat}" />
         </StackPanel>
+        <!-- Right side of window -->
+        <Grid Grid.Column="1">
+            <TextBlock Text="Damage output:" />
+            <TextBox x:Name="txtDamageOutput" Margin="0,20,0,0" Background="#FF272727" IsReadOnly="True" />
+        </Grid>
+        <!-- Text at the bottom -->
+        <TextBlock Text="Made by Mathias Lui" Grid.ColumnSpan="2" Grid.Row="1" FontSize="10" HorizontalAlignment="Center" />
     </Grid>
 </Window>

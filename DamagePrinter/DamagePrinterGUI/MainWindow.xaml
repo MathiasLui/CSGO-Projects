@@ -59,7 +59,7 @@
         <!-- Right side of window -->
         <Grid Grid.Column="1">
             <TextBlock Text="Damage output:" />
-            <TextBox x:Name="txtDamageOutput" Margin="0,20,0,0" Background="#FF272727" IsReadOnly="True" />
+            <TextBox x:Name="txtDamageOutput" TextWrapping="Wrap" Margin="0,20,0,0" Background="#FF272727" IsReadOnly="True" />
         </Grid>
         <!-- Text at the bottom -->
         <TextBlock Text="Made by Mathias Lui" Grid.ColumnSpan="2" Grid.Row="1" FontSize="10" HorizontalAlignment="Center" />

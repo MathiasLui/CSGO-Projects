@@ -54,6 +54,9 @@ namespace DamagePrinterGUI
         {
             InitializeComponent();
 
+            Version? ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            this.Title += $" v{(ver == null ? "???" : ver.ToString())}";
+
             if (!this.ensureConsoleLogAndGamePath())
             {
                 MessageBox.Show("The console log could not be created.\n\nAs a workaround, try to create an autoexec config and adding the line 'con_logfile console.log' to it.", "Unknown setup error", MessageBoxButton.OK, MessageBoxImage.Error);

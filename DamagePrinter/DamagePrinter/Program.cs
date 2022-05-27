@@ -27,6 +27,22 @@ static class Program
     [STAThread]
     static void Main(string[] args)
     {
+        var cfg = SteamShared.SourceConfig.SourceCFG.FromFile(@"I:\SteamLibrary\steamapps\common\Counter-Strike Global Offensive\csgo\cfg\autoexec.cfg");
+        foreach(var command in cfg.Commands)
+        {
+            Console.Write(command.CommandName + " ");
+            command.CommandValues?.ForEach(value => Console.Write(value.Value + " "));
+            Console.WriteLine();
+        }
+        return;
+
+
+        foreach (var game in steamHelper.GetInstalledGames())
+        {
+            Console.WriteLine(game.Name);
+        }
+        return;
+
         string? gamePath = steamHelper.GetGamePathFromExactName("Counter-Strike: Global Offensive");
 
         if (gamePath == null)
@@ -282,7 +298,7 @@ static class Program
                     ExecuteCommands(false, commands);
                 }
             }
-            Thread.Sleep(50);
+            Thread.Sleep(500);
         }
     }
 

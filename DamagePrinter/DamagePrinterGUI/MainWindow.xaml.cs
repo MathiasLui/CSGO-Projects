@@ -32,8 +32,8 @@ namespace DamagePrinterGUI
         [DllImport("user32.dll")]
         static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
 
-        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        static extern int SendMessage(IntPtr windowHandle, uint message, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll",  CharSet = CharSet.Unicode, SetLastError = true)]
+        static extern int SendMessageW(IntPtr windowHandle, uint message, IntPtr wParam, IntPtr lParam);
 
         /// <summary>
         /// Used for databinding.
@@ -46,6 +46,10 @@ namespace DamagePrinterGUI
         private static string consoleLogFileName = "console.log";
         private static string? consoleLogFolderPath = null;
 
+        // Task cancellation
+        private static CancellationTokenSource ts = new CancellationTokenSource();
+        private static CancellationToken ct = ts.Token;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -56,7 +60,7 @@ namespace DamagePrinterGUI
                 this.Close();
             }
 
-            Task.Run(mainLoop);
+            Task.Run(mainLoop, ct);
         }
 
         private void mainLoop()
@@ -68,6 +72,9 @@ namespace DamagePrinterGUI
             // here we start fresh at line 0 cause it got deleted
             while (true)
             {
+                if (ct.IsCancellationRequested)
+                    break;
+
                 this.Dispatcher.Invoke(() => this.lblConsoleLogFound.Text = "No");
                 // Check for the window every now and then
                 bool initialScan = true;
@@ -82,6 +89,9 @@ namespace DamagePrinterGUI
                     // We found the window so begin checking for the console
                     while (true)
                     {
+                        if (ct.IsCancellationRequested)
+                            break;
+
                         if (!findCsgoWindow())
                             break;
 
@@ -136,7 +146,12 @@ namespace DamagePrinterGUI
                                 bool endOfLine = false;
                                 while (!endOfLine)
                                 {
+                                    List<int> nextBytes = new List<int>();
+
+                                    // 0x80 is 8th bit or 1<<7 (first character of multibyte)
+                                    // as long as 0x80 (1<<7) and 0x40 (1<<6) (seventh bit) are both set, add it to current character
                                     int nextByte = fs.ReadByte();
+                                    nextBytes.Add(nextByte);
 
                                     if (nextByte == -1 && line != "")
                                     {
@@ -145,7 +160,25 @@ namespace DamagePrinterGUI
                                         break;
                                     }
 
-                                    char nextChar = (char)nextByte;
+                                    bool charFinished = nextByte < 1 || (nextByte & 1 << 7) == 0;
+                                    
+                                    while (!charFinished)
+                                    {
+                                        nextByte = fs.ReadByte();
+                                        if((nextByte & 1 << 7) != 0 && (nextByte & 1 << 6) == 0)
+                                        {
+                                            // Is next byte of multibyte char
+                                            nextBytes.Add(nextByte);
+                                            continue;
+                                        }
+
+                                        fs.Position--; // Move back one because we read prematurely
+                                        charFinished = true;
+                                    }
+
+                                    
+                                    char[] nextCharTry = Encoding.UTF8.GetChars(nextBytes.Select(b => (byte)b).ToArray());
+                                    char nextChar = nextCharTry.Length > 0 && nextBytes.Count > 1 ? nextCharTry[0] : (char)nextByte;
 
                                     if (nextChar == '\n' && line != "")
                                     {
@@ -154,7 +187,7 @@ namespace DamagePrinterGUI
                                     }
                                     else
                                         if (nextChar != '\r')
-                                        line += nextChar;
+                                            line += nextChar;
                                 }
                             }
 
@@ -344,7 +377,7 @@ namespace DamagePrinterGUI
 
                 COPYDATASTRUCT data;
                 data.dwData = 0;
-                data.cbData = (uint)cmds[i].Length + 1;
+                data.cbData = (uint)System.Text.ASCIIEncoding.UTF8.GetByteCount(cmds[i]);// (uint)cmds[i].Length + 1;
                 data.lpData = cmds[i];
 
                 if (triggeredByInGameCommand)
@@ -354,7 +387,7 @@ namespace DamagePrinterGUI
                 IntPtr ptr = Marshal.AllocHGlobal(Marshal.SizeOf(data));
                 Marshal.StructureToPtr(data, ptr, false);
 
-                int ret = SendMessage(hWnd, WM_COPYDATA, IntPtr.Zero, ptr);
+                int ret = SendMessageW(hWnd, WM_COPYDATA, IntPtr.Zero, ptr);
 
                 Console.WriteLine(cmds[i]);
 
@@ -489,6 +522,8 @@ namespace DamagePrinterGUI
         {
             // Save settings
             this.saveSettings();
+
+            ts.Cancel();
         }
         #endregion
     }
@@ -497,6 +532,7 @@ namespace DamagePrinterGUI
     {
         public ulong dwData;
         public uint cbData;
+        [MarshalAs(UnmanagedType.LPUTF8Str)]
         public string lpData;
     }
 }

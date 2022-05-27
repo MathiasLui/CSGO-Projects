@@ -377,7 +377,7 @@ namespace DamagePrinterGUI
 
                 COPYDATASTRUCT data;
                 data.dwData = 0;
-                data.cbData = (uint)System.Text.ASCIIEncoding.UTF8.GetByteCount(cmds[i]);// (uint)cmds[i].Length + 1;
+                data.cbData = (uint)System.Text.ASCIIEncoding.UTF8.GetByteCount(cmds[i]) + 1;// (uint)cmds[i].Length + 1;
                 data.lpData = cmds[i];
 
                 if (triggeredByInGameCommand)

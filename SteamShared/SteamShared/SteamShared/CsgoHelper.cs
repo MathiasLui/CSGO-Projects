@@ -205,7 +205,23 @@ namespace SteamShared
                 try
                 {
                     // Read actual radar
-                    image = new DDSImage(System.IO.File.ReadAllBytes(map.MapImagePath!));
+                    //image = new DDSImage(System.IO.File.ReadAllBytes(map.MapImagePath!));
+
+                    using (var pfimImage = Pfim.Pfim.FromFile(map.MapImagePath))
+                    {
+                        // TODO: Do we need to support more pixel formats?
+                        System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format24bppRgb;
+
+                        if(pfimImage.Format == Pfim.ImageFormat.Rgba32)
+                        {
+                            format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
+                        }
+
+                        // Maybe pin it so GC doesn't collect it, for now just ignore it
+                        var data = System.Runtime.InteropServices.Marshal.UnsafeAddrOfPinnedArrayElement(pfimImage.Data, 0);
+                        image = new System.Drawing.Bitmap(pfimImage.Width, pfimImage.Height, pfimImage.Stride, format, data);
+                    }
+
                 }
                 catch
                 {
@@ -217,6 +233,7 @@ namespace SteamShared
                     continue;
 
                 // Some workaround I found online for some thread error I forgot
+                // Future self: We probably want to execute it on the thread that owns the image
                 System.Windows.Application.Current.Dispatcher.Invoke((Action)delegate
                 {
                     map.MapImage = Globals.BitmapToImageSource(image.BitmapImage);

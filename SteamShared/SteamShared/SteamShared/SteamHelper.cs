@@ -94,6 +94,33 @@ namespace SteamShared
             if (this.steamPath == null)
                 return null;
 
+            // Usually the config.vdf had "BaseInstallFolder_" entries,
+            // now it seems that these entries don't exist anymore with reinstalls, and maybe they're not up-to-date anyways?
+            // Now we try reading the "libraryfolders.vdf", which now also contains the default library location
+#if NEWLIBRARYLOCATION
+            string configFilePath = Path.Combine(this.steamPath, "config", "libraryfolders.vdf");
+            if (!File.Exists(configFilePath))
+                return null;
+
+            // Fetch all libraries from the config
+            var configFile = new VDFFile(configFilePath);
+            IEnumerable<string>? foundSteamLibraries = configFile["libraryfolders"]?.Children.Select(c => c["path"]?.Value)!;
+
+            var allLibraries = new List<SteamLibrary>();
+
+            if (foundSteamLibraries?.Any() != true)
+            {
+                return null;
+            }
+
+            foreach (string foundLib in foundSteamLibraries!)
+            {
+                // All paths in the file are escaped
+                allLibraries.Add(new SteamLibrary(foundLib.Replace("\\\\", "\\")));
+            }
+
+            return allLibraries;
+#else
             string configFilePath = Path.Combine(this.steamPath, "config\\config.vdf");
             if (!File.Exists(configFilePath))
                 return null;
@@ -104,12 +131,15 @@ namespace SteamShared
 
             // List libraries plus default Steam directory, because that's the default library
             var allLibraries = new List<SteamLibrary> { new SteamLibrary(this.steamPath) };
-            foreach(string addLib in additionalSteamLibraries!)
+
+            foreach (string addLib in additionalSteamLibraries!)
             {
+                // All paths in the file are escaped
                 allLibraries.Add(new SteamLibrary(addLib.Replace("\\\\", "\\")));
             }
 
             return allLibraries;
+#endif
         }
 
         public List<SteamGame>? GetInstalledGames()

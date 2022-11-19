@@ -99,6 +99,7 @@ namespace Damage_Calculator
             {
                 MessageBox.Show("Make sure you have installed CS:GO and Steam correctly.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 this.Close();
+                return;
             }
 
             bgWorker.DoWork += BgWorker_DoWork;
@@ -1460,7 +1461,7 @@ namespace Damage_Calculator
                 this.txtWeaponBaseDamagePerMinute.Text = this.selectedWeapon.FireRate < 0 ? "?" : (this.selectedWeapon.BaseDamage * this.selectedWeapon.FireRate).ToString(CultureInfo.InvariantCulture);
                 this.txtWeaponFireRate.Text = this.selectedWeapon.FireRate.ToString(CultureInfo.InvariantCulture);
                 this.txtWeaponArmorPenetration.Text = this.selectedWeapon.ArmorPenetration.ToString(CultureInfo.InvariantCulture) + " %";
-                this.txtWeaponDamageDropoff.Text = Math.Round(1d - this.selectedWeapon.DamageDropoff, 2).ToString(CultureInfo.InvariantCulture) + " %";
+                this.txtWeaponDamageDropoff.Text = (Math.Round(1d - this.selectedWeapon.DamageDropoff, 2) * 100).ToString(CultureInfo.InvariantCulture) + " %";
                 this.txtWeaponMaxRange.Text = this.selectedWeapon.MaxBulletRange.ToString(CultureInfo.InvariantCulture);
                 this.txtWeaponHeadshotModifier.Text = this.selectedWeapon.DamageType != DamageType.Shock ? this.selectedWeapon.HeadshotModifier.ToString(CultureInfo.InvariantCulture) : placeholderText;
                 this.txtWeaponRunningSpeed.Text = this.selectedWeapon.RunningSpeed.ToString();

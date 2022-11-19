@@ -30,9 +30,6 @@
     <PackageReference Include="System.Drawing.Common" Version="6.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Pfim\src\Pfim\Pfim.csproj" />
-  </ItemGroup>
-  <ItemGroup>
     <None Update="SourceConfig\test_source.cfg">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>

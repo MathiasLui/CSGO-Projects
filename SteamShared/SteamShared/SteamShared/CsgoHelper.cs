@@ -205,22 +205,23 @@ namespace SteamShared
                 try
                 {
                     // Read actual radar
-                    //image = new DDSImage(System.IO.File.ReadAllBytes(map.MapImagePath!));
+                    image = new DDSImage(System.IO.File.ReadAllBytes(map.MapImagePath!));
 
-                    using (var pfimImage = Pfim.Pfim.FromFile(map.MapImagePath))
-                    {
-                        // TODO: Do we need to support more pixel formats?
-                        System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format24bppRgb;
+                    // If this is still commented out after ages, I'm sorry @FutureMe
+                    //using (var pfimImage = Pfim.Pfim.FromFile(map.MapImagePath))
+                    //{
+                    //    // TODO: Do we need to support more pixel formats?
+                    //    System.Drawing.Imaging.PixelFormat format = System.Drawing.Imaging.PixelFormat.Format24bppRgb;
 
-                        if(pfimImage.Format == Pfim.ImageFormat.Rgba32)
-                        {
-                            format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
-                        }
+                    //    if (pfimImage.Format == Pfim.ImageFormat.Rgba32)
+                    //    {
+                    //        format = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
+                    //    }
 
-                        // Maybe pin it so GC doesn't collect it, for now just ignore it
-                        var data = System.Runtime.InteropServices.Marshal.UnsafeAddrOfPinnedArrayElement(pfimImage.Data, 0);
-                        image = new System.Drawing.Bitmap(pfimImage.Width, pfimImage.Height, pfimImage.Stride, format, data);
-                    }
+                    //    // Maybe pin it so GC doesn't collect it, for now just ignore it
+                    //    var data = System.Runtime.InteropServices.Marshal.UnsafeAddrOfPinnedArrayElement(pfimImage.Data, 0);
+                    //    image = new System.Drawing.Bitmap(pfimImage.Width, pfimImage.Height, pfimImage.Stride, format, data);
+                    //}
 
                 }
                 catch

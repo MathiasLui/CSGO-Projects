@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DamageCalculator", "DamageC
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SteamShared", "..\SteamShared\SteamShared\SteamShared\SteamShared.csproj", "{3632D445-DC7D-43FC-AC66-8503F50FCA2A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Pfim", "..\SteamShared\Pfim\src\Pfim\Pfim.csproj", "{0EA4ECBB-6036-4936-8ABC-3F8AC154AB93}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,10 +21,6 @@ Global
 		{3632D445-DC7D-43FC-AC66-8503F50FCA2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3632D445-DC7D-43FC-AC66-8503F50FCA2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3632D445-DC7D-43FC-AC66-8503F50FCA2A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0EA4ECBB-6036-4936-8ABC-3F8AC154AB93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0EA4ECBB-6036-4936-8ABC-3F8AC154AB93}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0EA4ECBB-6036-4936-8ABC-3F8AC154AB93}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0EA4ECBB-6036-4936-8ABC-3F8AC154AB93}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

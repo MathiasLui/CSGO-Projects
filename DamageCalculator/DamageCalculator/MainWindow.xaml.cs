@@ -1048,12 +1048,21 @@ namespace Damage_Calculator
             }
 
             // Distance in shown pixels in 2D
-            double diffPixels2D = Math.Sqrt(Math.Pow(Math.Abs(leftX - rightX), 2) + Math.Pow(Math.Abs(leftY - rightY), 2));
+            double diffPixels2D = Math.Sqrt(Math.Pow(leftX - rightX, 2) + Math.Pow(leftY - rightY, 2));
             double unitsDifference2D = this.getUnitsFromPixels(diffPixels2D);
 
-            // Add Z height to calculation, unless a point has no area ID associated, then it stays 2D
-            double diffDistance3D = Math.Sqrt(Math.Pow(diffPixels2D, 2) + Math.Pow(Math.Abs(leftZ - rightZ), 2));
+            if (this.DrawMode == eDrawMode.Bomb)
+            {
+                // Add the appropriate eye level
+                if (radioPlayerStanding.IsChecked == true)
+                    rightZ += 64.093811;
+                else if(radioPlayerCrouched.IsChecked == true)
+                    rightZ += 46.076218;
+            }
 
+            // Add Z height to calculation, unless a point has no area ID associated, then it stays 2D
+            double diffDistance3D = Math.Sqrt(Math.Pow(diffPixels2D, 2) + Math.Pow(leftZ - rightZ, 2));
+  
             return diffDistance3D;
         }
 
@@ -1116,7 +1125,7 @@ namespace Damage_Calculator
                             // Has helmet
                             double previousDamage = damage;
                             damage *= this.selectedWeapon.ArmorPenetration / 100f;
-                            absorbedDamageByArmor = previousDamage - (int)damage;
+                            absorbedDamageByArmor = previousDamage - damage;
                             wasArmorHit = true;
                         }
                     }
@@ -1128,7 +1137,7 @@ namespace Damage_Calculator
                             // Has kevlar
                             double previousDamage = damage;
                             damage *= this.selectedWeapon.ArmorPenetration / 100f;
-                            absorbedDamageByArmor = previousDamage - (int)damage;
+                            absorbedDamageByArmor = previousDamage - damage;
                             wasArmorHit = true;
                         }
                     }
@@ -1142,7 +1151,7 @@ namespace Damage_Calculator
                             // Has kevlar
                             double previousDamage = damage;
                             damage *= this.selectedWeapon.ArmorPenetration / 100f;
-                            absorbedDamageByArmor = previousDamage - (int)damage;
+                            absorbedDamageByArmor = previousDamage - damage;
                             wasArmorHit = true;
                         }
                     }
@@ -1156,7 +1165,7 @@ namespace Damage_Calculator
 
             txtResult.Text = ((int)damage).ToString();
 
-            txtResultArmor.Text = (wasArmorHit ? (int)(absorbedDamageByArmor / 2) : 0).ToString();
+            txtResultArmor.Text = (wasArmorHit ? Math.Ceiling(absorbedDamageByArmor / 2f) : 0).ToString();
 
             // TODO: HP and armor and HP and armor left after shot
         }
@@ -1183,7 +1192,8 @@ namespace Damage_Calculator
 
             txtResult.Text = ((int)flAdjustedDamage).ToString();
 
-            txtResultArmor.Text = (wasArmorHit ? (int)((flAdjustedDamageBeforeArmor - flAdjustedDamage) / 2) : 0).ToString();
+            double roundedDamageToArmor = Math.Ceiling((flAdjustedDamageBeforeArmor - flAdjustedDamage) / 2f);
+            txtResultArmor.Text = (wasArmorHit && flAdjustedDamage >= 1 ? roundedDamageToArmor : 0).ToString();
         }
 
         double scaleDamageArmor(double flDamage, int armor_value)
@@ -1508,7 +1518,7 @@ namespace Damage_Calculator
             if (this.IsInitialized)
             {
                 this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = Visibility.Visible;
-                this.chkArmorAny.Visibility = Visibility.Collapsed;
+                this.stackPlayerStance.Visibility = this.lblPlayerStance.Visibility = this.chkArmorAny.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -1519,7 +1529,7 @@ namespace Damage_Calculator
             if (this.IsInitialized)
             {
                 this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = Visibility.Collapsed;
-                this.chkArmorAny.Visibility = Visibility.Visible;
+                this.stackPlayerStance.Visibility = this.lblPlayerStance.Visibility = this.chkArmorAny.Visibility = Visibility.Visible;
             }
         }
 
@@ -1622,6 +1632,16 @@ namespace Damage_Calculator
 
             if (map != null)
                 this.loadMap(map);
+        }
+
+        private void settings_UpdatedRadioButton(object sender, RoutedEventArgs e)
+        {
+            // Redraw the line to also trigger the distance to be recalculated
+            this.redrawLine = true;
+            this.drawPointsAndConnectingLine();
+
+            // Route this through to recalculate the bomb damage
+            this.settings_Updated(null, null);
         }
 
         private void settings_Updated(object sender, EventArgs e)

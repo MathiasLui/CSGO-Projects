@@ -59,6 +59,11 @@
             <StackPanel x:Name="leftStackPanel" Margin="10,20,0,0" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Stretch">
                 <StackPanel>
                     <StackPanel>
+                        <TextBlock x:Name="lblPlayerStance" Text="Player stance:" Visibility="Collapsed" FontSize="14" FontWeight="Bold" />
+                        <StackPanel x:Name="stackPlayerStance" Visibility="Collapsed" Margin="0,0,0,20">
+                            <RadioButton x:Name="radioPlayerStanding" IsChecked="True" Content="Player is standing" Checked="settings_UpdatedRadioButton"  />
+                            <RadioButton x:Name="radioPlayerCrouched" Content="Player is crouched" Checked="settings_UpdatedRadioButton"  />
+                        </StackPanel>
                         <TextBlock Text="Armor:" FontSize="14" FontWeight="Bold" />
                         <StackPanel x:Name="stackArmorSeparated">
                             <CheckBox x:Name="chkHelmet" Content="Helmet" Checked="settings_Updated" Unchecked="settings_Updated" />

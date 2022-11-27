@@ -32,6 +32,12 @@ namespace Damage_Calculator
 
         private readonly string placeholderText = "None";
 
+        private static readonly double eyeLevelStanding = 64.093811;
+        private static readonly double eyeLevelCrouching = 46.076218;
+        private static readonly int heightStanding = 72;
+        private static readonly int heightCrouching = 54;
+        private static readonly int playerWidth = 32;
+
         /// <summary>
         /// Holds current in-game mouse coordinates when hovering over the map
         /// </summary>
@@ -1026,6 +1032,7 @@ namespace Damage_Calculator
             // left and right point for the X and Y coordinates (in pixels) so we gotta convert those
             Point[] points = this.connectingLine.Tag as Point[];
 
+            // These are not in-game coordinates yet, but the offset from the top left -- but in units instead of pixels
             double leftX = this.getUnitsFromPixels(points[0].X);
             double leftY = this.getUnitsFromPixels(points[0].Y);
             double leftZ;
@@ -1034,10 +1041,29 @@ namespace Damage_Calculator
             double rightY = this.getUnitsFromPixels(points[1].Y);
             double rightZ;
 
+            // Make the left and right point in-game coordinates accessible to everyone outside this function
+            Point playerCoords = this.getGameCoordsFromPoint(points[1].X, points[1].Y);
+            this.playerPoint.X = playerCoords.X;
+            this.playerPoint.Y = playerCoords.Y;
+
+            Point targetOrBombCoords = this.getGameCoordsFromPoint(points[0].X, points[0].Y);
+            if (this.bombPoint != null)
+            {
+                this.bombPoint.X = targetOrBombCoords.X;
+                this.bombPoint.Y = targetOrBombCoords.Y;
+            }
+            if(this.targetPoint != null)
+            {
+                this.targetPoint.X = targetOrBombCoords.X;
+                this.targetPoint.Y = targetOrBombCoords.Y;
+            }
+
+            // Manage height
             if (this.playerPoint.AssociatedAreaID < 0 ||
                 ((this.DrawMode == eDrawMode.Shooting && this.targetPoint.AssociatedAreaID < 0)
                 || (this.DrawMode == eDrawMode.Bomb && this.bombPoint.AssociatedAreaID < 0))) 
             {
+                // One of the points has no area ID, and thus no Z coordinate
                 leftZ = 0;
                 rightZ = 0;
             }
@@ -1051,13 +1077,14 @@ namespace Damage_Calculator
             double diffPixels2D = Math.Sqrt(Math.Pow(leftX - rightX, 2) + Math.Pow(leftY - rightY, 2));
             double unitsDifference2D = this.getUnitsFromPixels(diffPixels2D);
 
+
             if (this.DrawMode == eDrawMode.Bomb)
             {
                 // Add the appropriate eye level
                 if (radioPlayerStanding.IsChecked == true)
-                    rightZ += 64.093811;
+                    rightZ += eyeLevelStanding;
                 else if(radioPlayerCrouched.IsChecked == true)
-                    rightZ += 46.076218;
+                    rightZ += eyeLevelCrouching;
             }
 
             // Add Z height to calculation, unless a point has no area ID associated, then it stays 2D
@@ -1172,11 +1199,46 @@ namespace Damage_Calculator
 
         private void calculateAndUpdateBombDamage()
         {
+            // This is the maximum damage, and the height of the bell curve
+            double flDamage = this.loadedMap.BombDamage; // 500 is hard-coded as the default, and also the default in the hammer editor, can be overridden as a map creator
+            double flBombRadius = flDamage * 3.5d;
+
+            // First we need to check if the player is within the bomb radius, this isn't done with a circle, but with a box that has a side length of 2r
+            // So basically it's the bounding box, so if you're not directly above, below, left or right of the bomb, the radius increases a bit
+            // Also its calculated via the bounding box of the player which is 32x32 units in the horizontal axes
+
+            // Get mins and maxs of player hitbox
+
+            // Mins is X - 16, Y - 16, Z
+            Vector3 playerMins = new Vector3 { X = (float)(this.playerPoint.X - (playerWidth / 2d)), Y = (float)(this.playerPoint.Y - (playerWidth / 2d)), Z = (float)this.playerPoint.Z };
+            
+            // Head height is not eye level, crouching is smaller, otherwise use standing height
+            float headHeight = (float)(this.radioPlayerCrouched.IsChecked == true ? heightCrouching : heightStanding);
+            
+            // Maxs is X + 16, Y + 16, Z + head height
+            Vector3 playerMaxs = new Vector3 { X = (float)(this.playerPoint.X + (playerWidth / 2d)), Y = (float)(this.playerPoint.Y + (playerWidth / 2d)), Z = (float)this.playerPoint.Z + headHeight };
+
+            // Get mins and maxs of bomb radius
+            Vector3 bombMins = new Vector3 { X = (float)(this.bombPoint.X - flBombRadius), Y = (float)(this.bombPoint.Y - flBombRadius), Z = (float)(this.bombPoint.Z - flBombRadius) };
+
+            Vector3 bombMaxs = new Vector3 { X = (float)(this.bombPoint.X + flBombRadius), Y = (float)(this.bombPoint.Y + flBombRadius), Z = (float)(this.bombPoint.Z + flBombRadius) };
+
+            // Check if the two boxes intersect
+            bool playerIsInRange = SpatialPartitioningHelper.BoxIntersects(bombMins, bombMaxs, playerMins, playerMaxs);
+
+            if (!playerIsInRange)
+            {
+                txtResult.Text = txtResultArmor.Text = "0";
+                return;
+            }
+
+            // Now we can calculate the damage...
+
             const double damagePercentage = 1.0d;
 
-            double flDamage = this.loadedMap.BombDamage; // 500 - default, if radius is not written on the map https://i.imgur.com/mUSaTHj.png
-            double flBombRadius = flDamage * 3.5d;
+            // From player origin + eye level, to the bomb
             double flDistanceToLocalPlayer = (double)this.unitsDistance;// ((c4bomb origin + viewoffset) - (localplayer origin + viewoffset))
+            // This defines the width of the curve, a smaller value gives a steeper curve and a faster falloff
             double fSigma = flBombRadius / 3.0d;
             double fGaussianFalloff = Math.Exp(-flDistanceToLocalPlayer * flDistanceToLocalPlayer / (2.0d * fSigma * fSigma));
             double flAdjustedDamage = flDamage * fGaussianFalloff * damagePercentage;

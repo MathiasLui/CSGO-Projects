@@ -14,6 +14,19 @@ namespace SteamShared.Models
 
         public double PercentageY { get; set; }
 
+        /// <summary>
+        /// The in-game X-coordinate.
+        /// </summary>
+        public double X { get; set; }
+
+        /// <summary>
+        /// The in-game Y-coordinate.
+        /// </summary>
+        public double Y { get; set; }
+
+        /// <summary>
+        /// The in-game Z-coordinate.
+        /// </summary>
         public double Z { get; set; }
 
         public int AssociatedAreaID { get; set; } = -1;

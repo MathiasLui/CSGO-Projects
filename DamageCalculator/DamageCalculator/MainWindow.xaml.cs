@@ -19,6 +19,12 @@ using SteamShared.ZatVdfParser;
 using System.Xml.Serialization;
 using System.Globalization;
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
+using System.Diagnostics;
+using System.Web.Services.Description;
+using System.Net.Sockets;
+using SteamShared;
+using System.Reflection;
 
 namespace Damage_Calculator
 {
@@ -82,7 +88,17 @@ namespace Damage_Calculator
         private Image ASiteIcon;
         private Image BSiteIcon;
 
-        private double unitsDistance = -1;
+        /// <summary>
+        /// The amount of distance in in-game units, that is drawn on the map.
+        /// If in bomb drawing mode, this will be the minimum distance that the bomb will calculate the damage at.
+        /// </summary>
+        private double unitsDistanceMin = -1;
+
+        /// <summary>
+        /// The maximum distance that the bomb will calculate the damage at, in units.
+        /// -1 if not in bomb mode.
+        /// </summary>
+        private double unitsDistanceMax = -1;
 
         /// <summary>
         /// Gets or sets the currently loaded map.
@@ -103,7 +119,7 @@ namespace Damage_Calculator
             SteamShared.Globals.Settings.CsgoHelper.CsgoPath = SteamShared.Globals.Settings.SteamHelper.GetGamePathFromExactName("Counter-Strike: Global Offensive");
             if (SteamShared.Globals.Settings.CsgoHelper.CsgoPath == null)
             {
-                MessageBox.Show("Make sure you have installed CS:GO and Steam correctly.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowMessage.Error("Make sure you have installed CS:GO and Steam correctly.");
                 this.Close();
                 return;
             }
@@ -362,11 +378,18 @@ namespace Damage_Calculator
                     this.playerPoint = null;
                     this.connectingLine = null;
                     this.bombPoint = null;
-                    this.unitsDistance = -1;
+                    this.unitsDistanceMin = -1;
+                    this.unitsDistanceMax = -1;
                     this.textDistanceMetres.Text = "0";
                     this.textDistanceUnits.Text = "0";
                     this.txtResult.Text = "0";
                     this.txtResultArmor.Text = "0";
+                    this.txtResultBombMin.Text = "0";
+                    this.txtResultBombMedian.Text = "0";
+                    this.txtResultBombMax.Text = "0";
+                    this.txtResultArmorBombMin.Text = "0";
+                    this.txtResultArmorBombMedian.Text = "0";
+                    this.txtResultArmorBombMax.Text = "0";
                     this.txtTimeRunning.Text = "0";
                     this.txtTimeWalking.Text = "0";
                     this.txtTimeCrouching.Text = "0";
@@ -532,8 +555,8 @@ namespace Damage_Calculator
 
                 if (className == "info_hostage_spawn" || className == "hostage_entity")
                 {
-                    // Entity is hostage spawn point (equivalent but latter is csgo specific)
-                    var spawn = new PlayerSpawn();
+                    // Entity is hostage spawn point (equivalent but "info_hostage_spawn" is CS:GO-specific, "hostage_entity" is the equivalent and also exists in CS:S)
+                    var spawn = new PlayerSpawn(); // Technically not a player :D
                     spawn.Origin = this.stringToVector3(entityRootVdf["origin"]?.Value) ?? Vector3.Zero;
                     spawn.Angles = this.stringToVector3(entityRootVdf["angles"]?.Value) ?? Vector3.Zero;
                     spawn.Team = ePlayerTeam.CounterTerrorist; // Just for the colour
@@ -635,7 +658,7 @@ namespace Damage_Calculator
             circle.Fill = null;
             circle.Width = circle.Height = this.getPixelsFromUnits(150);
             circle.Stroke = new SolidColorBrush(strokeColour);
-            circle.StrokeThickness = 2;
+            circle.StrokeThickness = 1;
             circle.IsHitTestVisible = false;
 
             return circle;
@@ -651,7 +674,7 @@ namespace Damage_Calculator
             circle.Fill = new SolidColorBrush(fillColour);
             circle.Width = circle.Height = this.getPixelsFromUnits(loadedMap.BombDamage * 3.5 * 2); // * 2 cause radius to width
             circle.Stroke = new SolidColorBrush(strokeColour);
-            circle.StrokeThickness = 3;
+            circle.StrokeThickness = 1;
             circle.IsHitTestVisible = false;
 
             return circle;
@@ -863,10 +886,32 @@ namespace Damage_Calculator
                     }
                     this.redrawLine = false;
                     // Update top right corner distance texts
-                    this.unitsDistance = this.calculateDistanceInUnits();
+                    this.unitsDistanceMin = this.calculateDistanceInUnits(isMax: false);
 
-                    this.textDistanceUnits.Text = Math.Round(this.unitsDistance, 3).ToString(CultureInfo.InvariantCulture);
-                    this.textDistanceMetres.Text = Math.Round(this.unitsDistance / 39.37, 3).ToString(CultureInfo.InvariantCulture);
+                    if (this.DrawMode == eDrawMode.Bomb)
+                    {
+                        this.unitsDistanceMax = this.calculateDistanceInUnits(isMax: true);
+
+                        if (this.unitsDistanceMin > this.unitsDistanceMax)
+                        {
+                            // The min and max will only be min and max if the player is above the bomb.
+                            // If he's below the bomb, it will be swapped
+                            (this.unitsDistanceMin, this.unitsDistanceMax) = (this.unitsDistanceMax, this.unitsDistanceMin);
+                        }
+                    }
+
+                    if (this.unitsDistanceMax >= 0)
+                    {
+                        // We have a min and max value so show it like that as well: "0.000 - 0.000"
+                        this.textDistanceUnits.Text = $"{Math.Round(this.unitsDistanceMin, 3).ToString(CultureInfo.InvariantCulture)} - {Math.Round(this.unitsDistanceMax, 3).ToString(CultureInfo.InvariantCulture)}";
+                        this.textDistanceMetres.Text = $"{Math.Round(this.unitsDistanceMin / 39.37, 3).ToString(CultureInfo.InvariantCulture)} - {Math.Round(this.unitsDistanceMax / 39.37, 3).ToString(CultureInfo.InvariantCulture)}";
+                    }
+                    else
+                    {
+                        // We only have a "Min" distance, which is used for firearms. "0.000"
+                        this.textDistanceUnits.Text = Math.Round(this.unitsDistanceMin, 3).ToString(CultureInfo.InvariantCulture);
+                        this.textDistanceMetres.Text = Math.Round(this.unitsDistanceMin / 39.37, 3).ToString(CultureInfo.InvariantCulture);
+                    }
 
                     // Recalculate and show damage
                     this.settings_Updated(null, null);
@@ -1027,7 +1072,16 @@ namespace Damage_Calculator
             }
         }
 
-        private double calculateDistanceInUnits()
+        /// <summary>
+        /// Calculates the distance from the start to the end of the <see cref="connectingLine"/>.
+        /// Bomb distance adds a random factor, which is described as min and max.
+        /// </summary>
+        /// <param name="isMax">
+        /// If we calculate bomb damage, should we get the max possible distance?
+        /// Otherwise it will return the min possible distance.
+        /// </param>
+        /// <returns></returns>
+        private double calculateDistanceInUnits(bool isMax = false)
         {
             // left and right point for the X and Y coordinates (in pixels) so we gotta convert those
             Point[] points = this.connectingLine.Tag as Point[];
@@ -1073,31 +1127,35 @@ namespace Damage_Calculator
                 rightZ = this.playerPoint.Z;
             }
 
-            // Distance in shown pixels in 2D
-            double diffPixels2D = Math.Sqrt(Math.Pow(leftX - rightX, 2) + Math.Pow(leftY - rightY, 2));
-            double unitsDifference2D = this.getUnitsFromPixels(diffPixels2D);
-
+            // Distance in units in 2D
+            double diffUnits2D = Math.Sqrt(Math.Pow(leftX - rightX, 2) + Math.Pow(leftY - rightY, 2));
 
             if (this.DrawMode == eDrawMode.Bomb)
             {
-                // Add the appropriate eye level
+                float minFactor = 0.7f;
+                float maxFactor = 1.0f;
+
+                // Add the appropriate height
+                // They use the middle of the oriented bounding box,
+                // which should be equal to the axis-aligned bounding box, but with additional yaw in the normal sense
+                // Since we already have the X-Y middle, we just add half of the height to get the Z-middle as well
                 if (radioPlayerStanding.IsChecked == true)
-                    rightZ += eyeLevelStanding;
+                    rightZ += isMax ? eyeLevelStanding * maxFactor : eyeLevelStanding * minFactor;
                 else if(radioPlayerCrouched.IsChecked == true)
-                    rightZ += eyeLevelCrouching;
+                    rightZ += isMax ? eyeLevelCrouching * maxFactor : eyeLevelCrouching * minFactor;
             }
 
             // Add Z height to calculation, unless a point has no area ID associated, then it stays 2D
-            double diffDistance3D = Math.Sqrt(Math.Pow(diffPixels2D, 2) + Math.Pow(leftZ - rightZ, 2));
+            double diffUnits3D = Math.Sqrt(Math.Pow(diffUnits2D, 2) + Math.Pow(leftZ - rightZ, 2));
   
-            return diffDistance3D;
+            return diffUnits3D;
         }
 
         private void calculateDistanceDuration()
         {
-            double timeRunning = this.unitsDistance / this.selectedWeapon.RunningSpeed;
-            double timeWalking = this.unitsDistance / (this.selectedWeapon.RunningSpeed * SteamShared.CsgoHelper.WalkModifier);
-            double timeCrouching = this.unitsDistance / (this.selectedWeapon.RunningSpeed * SteamShared.CsgoHelper.DuckModifier);
+            double timeRunning = this.unitsDistanceMin / this.selectedWeapon.RunningSpeed;
+            double timeWalking = this.unitsDistanceMin / (this.selectedWeapon.RunningSpeed * SteamShared.CsgoHelper.WalkModifier);
+            double timeCrouching = this.unitsDistanceMin / (this.selectedWeapon.RunningSpeed * SteamShared.CsgoHelper.DuckModifier);
 
             this.txtTimeRunning.Text = getTimeStringFromSeconds(timeRunning);
             this.txtTimeWalking.Text = getTimeStringFromSeconds(timeWalking);
@@ -1125,7 +1183,7 @@ namespace Damage_Calculator
             double absorbedDamageByArmor = 0;
             bool wasArmorHit = false;
 
-            if (this.unitsDistance > this.selectedWeapon.MaxBulletRange)
+            if (this.unitsDistanceMin > this.selectedWeapon.MaxBulletRange)
             {
                 damage = 0;
                 txtResult.Text = txtResultArmor.Text = damage.ToString();
@@ -1133,7 +1191,7 @@ namespace Damage_Calculator
             }
 
             // Range
-            damage *= Math.Pow(this.selectedWeapon.DamageDropoff, double.Parse((this.unitsDistance / 500f).ToString()));
+            damage *= Math.Pow(this.selectedWeapon.DamageDropoff, double.Parse((this.unitsDistanceMin / 500f).ToString()));
 
             switch (this.selectedWeapon.DamageType)
             {
@@ -1199,22 +1257,45 @@ namespace Damage_Calculator
 
         private void calculateAndUpdateBombDamage()
         {
+            // Now we can calculate the damage...
+            double minDamage; 
+            double minDamageArmor; 
+            this.getBombDamage(this.unitsDistanceMax, armorValue: 100, out minDamage, out minDamageArmor);
+            double maxDamage;
+            double maxDamageArmor;
+            this.getBombDamage(this.unitsDistanceMin, armorValue: 100, out maxDamage, out maxDamageArmor);
+            
+            txtResultBombMin.Text = ((int)minDamage).ToString();
+            txtResultBombMax.Text = ((int)maxDamage).ToString();
+            txtResultBombMedian.Text = ((int)((maxDamage + minDamage) / 2f)).ToString();
+
+            txtResultArmorBombMin.Text = minDamageArmor.ToString();
+            txtResultArmorBombMax.Text = maxDamageArmor.ToString();
+            txtResultArmorBombMedian.Text = ((maxDamageArmor + minDamageArmor) / 2f).ToString();
+        }
+
+        private void getBombDamage(double distance, int armorValue, out double hpDamage, out double armorDamage)
+        {
+            // out params
+            hpDamage = 0;
+            armorDamage = 0;
+
             // This is the maximum damage, and the height of the bell curve
             double flDamage = this.loadedMap.BombDamage; // 500 is hard-coded as the default, and also the default in the hammer editor, can be overridden as a map creator
             double flBombRadius = flDamage * 3.5d;
 
-            // First we need to check if the player is within the bomb radius, this isn't done with a circle, but with a box that has a side length of 2r
-            // So basically it's the bounding box, so if you're not directly above, below, left or right of the bomb, the radius increases a bit
-            // Also its calculated via the bounding box of the player which is 32x32 units in the horizontal axes
+            // First we need to check if the player is within the bomb radius, this isn't done with a sphere, but with a box that has a side length of 2r
+            // So basically it's the bounding box, so if you're not directly above, below, left or right of the bomb (as seen from above), the radius increases a bit.
+            // Also its calculated via the intersection with the bounding box of the player which is 32x32 units in the horizontal axes
 
             // Get mins and maxs of player hitbox
 
             // Mins is X - 16, Y - 16, Z
             Vector3 playerMins = new Vector3 { X = (float)(this.playerPoint.X - (playerWidth / 2d)), Y = (float)(this.playerPoint.Y - (playerWidth / 2d)), Z = (float)this.playerPoint.Z };
-            
-            // Head height is not eye level, crouching is smaller, otherwise use standing height
+
+            // Head height is the eye level, crouching is smaller, otherwise use standing height
             float headHeight = (float)(this.radioPlayerCrouched.IsChecked == true ? heightCrouching : heightStanding);
-            
+
             // Maxs is X + 16, Y + 16, Z + head height
             Vector3 playerMaxs = new Vector3 { X = (float)(this.playerPoint.X + (playerWidth / 2d)), Y = (float)(this.playerPoint.Y + (playerWidth / 2d)), Z = (float)this.playerPoint.Z + headHeight };
 
@@ -1228,36 +1309,35 @@ namespace Damage_Calculator
 
             if (!playerIsInRange)
             {
-                txtResult.Text = txtResultArmor.Text = "0";
+                hpDamage = 0;
+                armorDamage = 0;
                 return;
             }
 
-            // Now we can calculate the damage...
-
-            const double damagePercentage = 1.0d;
-
-            // From player origin + eye level, to the bomb
-            double flDistanceToLocalPlayer = (double)this.unitsDistance;// ((c4bomb origin + viewoffset) - (localplayer origin + viewoffset))
+            // From player origin + offset, to the bomb origin
+            double flDistanceToLocalPlayer = distance;
             // This defines the width of the curve, a smaller value gives a steeper curve and a faster falloff
             double fSigma = flBombRadius / 3.0d;
             double fGaussianFalloff = Math.Exp(-flDistanceToLocalPlayer * flDistanceToLocalPlayer / (2.0d * fSigma * fSigma));
-            double flAdjustedDamage = flDamage * fGaussianFalloff * damagePercentage;
+            double flAdjustedDamage = flDamage * fGaussianFalloff;
 
-            bool wasArmorHit = false;
             double flAdjustedDamageBeforeArmor = flAdjustedDamage;
 
             if (chkArmorAny.IsChecked == true)
             {
-                flAdjustedDamage = scaleDamageArmor(flAdjustedDamage, 100);
-                wasArmorHit = true;
+                flAdjustedDamage = scaleDamageArmor(flAdjustedDamage, armorValue);
+                armorDamage = flAdjustedDamage >= 1 ? Math.Ceiling((flAdjustedDamageBeforeArmor - flAdjustedDamage) / 2f) : 0;
             }
 
-            txtResult.Text = ((int)flAdjustedDamage).ToString();
-
-            double roundedDamageToArmor = Math.Ceiling((flAdjustedDamageBeforeArmor - flAdjustedDamage) / 2f);
-            txtResultArmor.Text = (wasArmorHit && flAdjustedDamage >= 1 ? roundedDamageToArmor : 0).ToString();
+            hpDamage = flAdjustedDamage;
         }
 
+        /// <summary>
+        /// Calculates the amount of damage that the bomb deals with a specific amount of armor.
+        /// </summary>
+        /// <param name="flDamage">The damage that was dealt to the player by the bomb.</param>
+        /// <param name="armor_value">The amount of armor that the player had.</param>
+        /// <returns>the amount of damage that is actually dealt.</returns>
         double scaleDamageArmor(double flDamage, int armor_value)
         {
             double flArmorRatio = 0.5d;
@@ -1311,6 +1391,14 @@ namespace Damage_Calculator
             this.changeTheme(Globals.Settings.Theme);
         }
 
+        /// <summary>
+        /// Takes the given <see cref="NavArea"/> and the height of its 4 points,
+        /// and calculates what the height of the given point of (X,Y) must be, with linear interpolation and weights.
+        /// </summary>
+        /// <param name="x">The given X of point.</param>
+        /// <param name="y">The given Y of point.</param>
+        /// <param name="area">The area that serves as a height reference.</param>
+        /// <returns>the Z coordinate of the given point in respect to the <see cref="NavArea"/>.</returns>
         private float getPointHeightInArea(float x, float y, NavArea area)
         {
             Vector3[][] groups = new Vector3[][] 
@@ -1356,7 +1444,7 @@ namespace Damage_Calculator
                 // Height to be displayed further down, depending on area chosen
                 float newZ = 0;
 
-                if (this.loadedMap.NavMesh?.Header?.NavAreas != null)
+                if (this.loadedMap?.NavMesh?.Header?.NavAreas != null)
                 {
                     var navAreasFound = new List<NavArea>();
 
@@ -1385,7 +1473,7 @@ namespace Damage_Calculator
                         // Or the amount of areas hovered over has changed.
                         // In that case set it to the layer with the lowest Z difference to the previously selected one
 
-                        if (navAreasFound.Count == 1 || this.hoveredNavAreas.Count == 0)
+                        if (navAreasFound.Count == 1 || this.hoveredNavAreas == null || this.hoveredNavAreas?.Count == 0)
                             this.currentHeightLayer = 0;
                         else
                         {
@@ -1524,6 +1612,44 @@ namespace Damage_Calculator
             }
         }
 
+        /// <summary>
+        /// Gets the <see cref="NavArea"/> of the <see cref="loadedMap"/> that is closest to the height of the given point.
+        /// The point has to be inside of the X and Y bounds of the NAV area for it to be considered.
+        /// This makes it so the Z distance can be anything, as long as it's the closest of any area.
+        /// </summary>
+        /// <param name="point">The point we want to partner with a NAV area.</param>
+        /// <returns>The <see cref="NavArea"/> belonging to the point.</returns>
+        private NavArea? getClosestNavAreaToPoint(Vector3 point)
+        {
+            if (this.loadedMap?.NavMesh?.Header?.NavAreas == null)
+            {
+                return null;
+            }
+
+            NavArea closestNavArea = null;
+            float closestDistance = float.MaxValue;
+
+            foreach(NavArea area in this.loadedMap.NavMesh.Header.NavAreas)
+            {
+                if (point.X < area.ActualNorthWestCorner.X || point.X > area.ActualNorthEastCorner.X
+                    || point.Y < area.ActualSouthWestCorner.Y || point.Y > area.ActualNorthWestCorner.Y)
+                {
+                    // Point is not in this NavArea's X and Y bounds
+                    continue;
+                }
+
+                float currentZDistance = Math.Abs(area.MedianPosition.Z - point.Z);
+
+                if (currentZDistance < closestDistance)
+                {
+                    closestDistance = currentZDistance;
+                    closestNavArea = area;
+                }
+            }
+
+            return closestNavArea;
+        }
+
         private void fillWeaponInfo()
         {
             if(this.selectedWeapon != null)
@@ -1556,7 +1682,334 @@ namespace Damage_Calculator
                 x.Text = placeholderText;
         }
 
+        private void setPlayerConnected(bool connected)
+        {
+            if (connected)
+            {
+                this.stackInGameConnected.Visibility = Visibility.Visible;
+                this.stackInGameDisconnected.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                this.stackInGameConnected.Visibility = Visibility.Collapsed;
+                this.stackInGameDisconnected.Visibility = Visibility.Visible;
+            }
+        }
+
+        private bool getNetConPort(string input, out ushort port)
+        {
+            int index = input.IndexOf("-netconport", StringComparison.InvariantCultureIgnoreCase);
+            port = 0;
+
+            if (index < 0)
+                return false;
+
+            input = input.Substring(index);
+            var foundArguments = Regex.Matches(input, SteamShared.Globals.ArgumentPattern, RegexOptions.IgnoreCase);
+
+            if (foundArguments.Count > 1)
+            {
+                string setPort = foundArguments[1].Value.Replace("\"","");
+                if (ushort.TryParse(setPort, out ushort telnetPort))
+                {
+                    port = telnetPort;
+                }
+                return true;
+            }
+
+            return false;
+        }
+        
+        private bool getNetConPassword(string input, out string password)
+        {
+            int index = input.IndexOf("-netconpassword", StringComparison.InvariantCultureIgnoreCase);
+            password = string.Empty;
+
+            if (index < 0)
+                return false;
+
+            input = input.Substring(index);
+            var foundArguments = Regex.Matches(input, SteamShared.Globals.ArgumentPattern, RegexOptions.IgnoreCase);
+
+            if (foundArguments.Count > 1)
+            {
+                string setPassword = foundArguments[1].Value.Replace("\"", "");
+                if (!setPassword.StartsWith("-"))
+                {
+                    password = setPassword;
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        private async void establishCsgoConnection()
+        {
+            if (SteamShared.Globals.Settings.CsgoSocket.IsConnecting)
+            {
+                ShowMessage.Error("We're currently trying to connect to CS:GO.\n\nThis should only be 10 seconds after starting to connect.\n\nIf CS:GO was not started yet, this time is 60 seconds.");
+                return;
+            }
+
+            var mostRecentUser = SteamShared.Globals.Settings.SteamHelper.GetMostRecentSteamUser();
+
+            if (mostRecentUser == null)
+            {
+                ShowMessage.Error("There was no user found that was marked as most recent.\n\nTry logging into Steam, if it's been a while.");
+                return;
+            }
+
+            var startOptions = SteamShared.Globals.Settings.CsgoHelper.GetLaunchOptions(mostRecentUser);
+
+            if (startOptions == null)
+            {
+                ShowMessage.Error($"There was an error while trying to get the CS:GO launch options for the user {mostRecentUser.PersonaName} ({mostRecentUser.AccountName}).");
+                return;
+            }
+
+            // Because the start options are passed either way, we just want to add what we want additionally
+            string additionalStartOptions = string.Empty;
+            bool needsAdditionalStartOptions = true;
+
+            // Set own password and port, if no others will be found
+            string passwordToUse = string.Empty; // We don't want a password
+            ushort portToUse = Globals.Settings.NetConPort;
+
+            // Check if CS:GO is running
+            (Process? csgo, string? curCsgoCmdLine) = SteamShared.Globals.Settings.CsgoHelper.GetRunningCsgo();
+
+            // CS:GO wasn't open, so either take the info from the start options or create our own
+            // We're gonna get those from the file that stores the current settings, because the game is not running
+            ushort foundPort = 0;
+            bool portWasFound = this.getNetConPort(csgo == null ? startOptions : curCsgoCmdLine, out foundPort);
+
+            string foundPassword = string.Empty;
+            bool passwordWasFound = this.getNetConPassword(csgo == null ? startOptions : curCsgoCmdLine, out foundPassword);
+
+            // Verify found port and password are valid
+            if (portWasFound && foundPort > 0)
+            {
+                portToUse = foundPort;
+                needsAdditionalStartOptions = false; // If at least a port has been found, we're happy
+            }
+            if (passwordWasFound && !string.IsNullOrWhiteSpace(foundPassword))
+            {
+                passwordToUse = foundPassword; // If we were told to use a password, then we'll do that
+            }
+
+            if (needsAdditionalStartOptions)
+            {
+                additionalStartOptions += $" -netconport {portToUse}";
+            }
+
+            if (csgo == null)
+            {
+                // CS:GO is not opened, just ask if the user wants to start it
+                if (MessageBox.Show("Do you want to start CS:GO now?", "Start CS:GO", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    SteamShared.Globals.Settings.SteamHelper.StartApp(SteamShared.CsgoHelper.GameID, additionalStartOptions);
+                    ShowMessage.Info("CS:GO is currently attempting to start. Retry to connect when you're in-game.\n\nRetrying while on a map will load the corresponding map.");
+                    return;
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                // CS:GO is already running
+                if (needsAdditionalStartOptions)
+                {
+                    // We need to restart the game, in order to set a port
+                    if (MessageBox.Show("The game is already running and doesn't seem to have a connection enabled.\n\nDo you want to kill and restart CS:GO now?", "Restart CS:GO", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                    {
+                        // Wait for CS:GO to close here (with timeout!)
+                        csgo.Kill();
+                        csgo.WaitForExit(5000);
+
+                        if (csgo.HasExited)
+                        {
+                            SteamShared.Globals.Settings.SteamHelper.StartApp(SteamShared.CsgoHelper.GameID, additionalStartOptions);
+
+                            ShowMessage.Info("CS:GO is currently attempting to restart. Retry to connect when you're in-game.\n\nRetrying while on a map will load the corresponding map.");
+                            return;
+                        }
+                        else
+                        {
+                            ShowMessage.Error("CS:GO has not closed after 5 seconds of waiting. Try again when the game has closed.");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+            }
+
+            var connectResult = await SteamShared.Globals.Settings.CsgoSocket.ConnectAsync(portToUse, null);
+            SteamShared.Globals.Settings.CsgoSocket.OnDisconnect += CsgoSocket_OnDisconnect;
+            if (connectResult == CsgoSocketConnectResult.Success)
+            {
+                // Connected
+                this.setPlayerConnected(true);
+
+                // Get map name and try to select it
+                await this.loadCurrentMap();
+            }
+        }
+
+        private async Task loadCurrentMap()
+        {
+            string currentMapName = await SteamShared.Globals.Settings.CsgoSocket.GetMapName();
+
+            if (currentMapName == null)
+                return;
+
+            foreach (var mapItem in comboBoxMaps.Items)
+            {
+                if (mapItem is ComboBoxItem item && item.Tag is CsgoMap map)
+                {
+                    if (currentMapName.ToLower().Contains(map.MapFileName.ToLower()))
+                    {
+                        // We found the map in the list, that the player is currently on
+                        comboBoxMaps.SelectedItem = mapItem;
+                        break;
+                    }
+                }
+            }
+        }
+
+
+        private void setTargetOrBombPoint(Vector3 givenCoords = null)
+        {
+            if (this.DrawMode == eDrawMode.Shooting)
+            {
+                if (this.targetPoint == null)
+                    this.targetPoint = new MapPoint();
+
+                Point newPointPosPixels = givenCoords == null ? Mouse.GetPosition(this.mapCanvas) : this.getPointFromGameCoords(givenCoords.X, givenCoords.Y);
+                this.canvasRemove(this.targetPoint.Circle);
+
+                var circle = this.getPointEllipse(this.leftClickPointColour);
+
+                this.canvasAdd(circle);
+
+                this.targetPoint.PercentageX = newPointPosPixels.X * 100f / this.mapCanvas.ActualWidth;
+                this.targetPoint.PercentageY = newPointPosPixels.Y * 100f / this.mapCanvas.ActualHeight;
+                this.targetPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
+                this.targetPoint.Z = givenCoords == null ? this.currentMouseCoord.Z : givenCoords.Z;
+                if (this.currentHeightLayer >= 0 && givenCoords == null)
+                {
+                    // Associate area ID to see if we want just 2D distance in case one point has no area (and with that, Z value) with it
+                    this.targetPoint.AssociatedAreaID = (int)this.hoveredNavAreas?[this.currentHeightLayer].ID;
+                }
+                else if (givenCoords != null)
+                {
+                    NavArea closestArea = this.getClosestNavAreaToPoint(givenCoords);
+                    if (closestArea != null)
+                    {
+                        this.targetPoint.AssociatedAreaID = (int)closestArea.ID;
+                    }
+                }
+                else
+                    this.targetPoint.AssociatedAreaID = -1;
+
+                this.targetPoint.Circle = circle;
+                this.redrawLine = true;
+
+                this.drawPointsAndConnectingLine();
+            }
+            else if (this.DrawMode == eDrawMode.Bomb)
+            {
+                if (this.bombPoint == null)
+                    this.bombPoint = new MapPoint();
+
+                Point newPointPosPixels = givenCoords == null ? Mouse.GetPosition(this.mapCanvas) : this.getPointFromGameCoords(givenCoords.X, givenCoords.Y);
+                this.canvasRemove(this.bombPoint.Circle);
+
+                var circle = this.getBombEllipse(this.leftClickPointColour);
+
+                this.canvasAdd(circle);
+
+                this.bombPoint.PercentageX = newPointPosPixels.X * 100f / this.mapCanvas.ActualWidth;
+                this.bombPoint.PercentageY = newPointPosPixels.Y * 100f / this.mapCanvas.ActualHeight;
+                this.bombPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
+                this.bombPoint.Z = givenCoords == null ? this.currentMouseCoord.Z : givenCoords.Z;
+                if (this.currentHeightLayer >= 0 && givenCoords == null)
+                {
+                    // Associate area ID to see if we want just 2D distance in case one point has no area (and with that, Z value) with it
+                    this.bombPoint.AssociatedAreaID = (int)this.hoveredNavAreas?[this.currentHeightLayer].ID;
+                }
+                else if (givenCoords != null)
+                {
+                    NavArea closestArea = this.getClosestNavAreaToPoint(givenCoords);
+                    if (closestArea != null)
+                    {
+                        this.bombPoint.AssociatedAreaID = (int)closestArea.ID;
+                    }
+                }
+                else
+                    this.bombPoint.AssociatedAreaID = -1;
+
+                this.bombPoint.Circle = circle;
+
+                this.redrawLine = true;
+
+                this.drawPointsAndConnectingLine();
+            }
+        }
+
+        private void setPlayerPoint(Vector3 givenCoords = null)
+        {
+            if (this.playerPoint == null)
+                this.playerPoint = new MapPoint();
+
+            Point newPointPosPixels = givenCoords == null ? Mouse.GetPosition(this.mapCanvas) : this.getPointFromGameCoords(givenCoords.X, givenCoords.Y); 
+            this.canvasRemove(this.playerPoint.Circle);
+
+            var circle = this.getPointEllipse(this.rightClickPointColour);
+
+            this.canvasAdd(circle);
+
+            this.playerPoint.PercentageX = newPointPosPixels.X * 100f / this.mapCanvas.ActualWidth;
+            this.playerPoint.PercentageY = newPointPosPixels.Y * 100f / this.mapCanvas.ActualHeight;
+            this.playerPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
+            this.playerPoint.Z = givenCoords == null ? this.currentMouseCoord.Z : givenCoords.Z;
+
+            if (this.currentHeightLayer >= 0 && givenCoords == null)
+            {
+                // Associate area ID to see if we want just 2D distance in case one point has no area (and with that, Z value) with it
+                this.playerPoint.AssociatedAreaID = (int)this.hoveredNavAreas?[this.currentHeightLayer].ID;
+            }
+            else if (givenCoords != null)
+            {
+                NavArea closestArea = this.getClosestNavAreaToPoint(givenCoords);
+                if(closestArea != null)
+                {
+                    this.playerPoint.AssociatedAreaID = (int)closestArea.ID;
+                }
+            }
+            else
+                this.playerPoint.AssociatedAreaID = -1;
+
+            this.playerPoint.Circle = circle;
+
+            this.redrawLine = true;
+
+            this.drawPointsAndConnectingLine();
+        }
+
+
+
         #region events
+        private void CsgoSocket_OnDisconnect(object sender, EventArgs e)
+        {
+            this.setPlayerConnected(false);
+        }
+
         private void rightZoomBorder_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (rightZoomBorder.IsZoomed)
@@ -1579,8 +2032,8 @@ namespace Damage_Calculator
             this.DrawMode = eDrawMode.Shooting;
             if (this.IsInitialized)
             {
-                this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = Visibility.Visible;
-                this.stackPlayerStance.Visibility = this.lblPlayerStance.Visibility = this.chkArmorAny.Visibility = Visibility.Collapsed;
+                this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = this.stackDamageFirearm.Visibility = Visibility.Visible;
+                this.stackPlayerStance.Visibility = this.lblPlayerStance.Visibility = this.chkArmorAny.Visibility = this.stackDamageBomb.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -1590,8 +2043,8 @@ namespace Damage_Calculator
             this.DrawMode = eDrawMode.Bomb;
             if (this.IsInitialized)
             {
-                this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = Visibility.Collapsed;
-                this.stackPlayerStance.Visibility = this.lblPlayerStance.Visibility = this.chkArmorAny.Visibility = Visibility.Visible;
+                this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = this.stackDamageFirearm.Visibility = Visibility.Collapsed;
+                this.stackPlayerStance.Visibility = this.lblPlayerStance.Visibility = this.chkArmorAny.Visibility = this.stackDamageBomb.Visibility = Visibility.Visible;
             }
         }
 
@@ -1602,90 +2055,12 @@ namespace Damage_Calculator
 
         private void mapImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (this.DrawMode == eDrawMode.Shooting)
-            {
-                if (this.targetPoint == null)
-                    this.targetPoint = new MapPoint();
-
-                Point mousePos = Mouse.GetPosition(this.mapCanvas);
-                this.canvasRemove(this.targetPoint.Circle);
-
-                var circle = this.getPointEllipse(this.leftClickPointColour);
-
-                this.canvasAdd(circle);
-
-                this.targetPoint.PercentageX = mousePos.X * 100f / this.mapCanvas.ActualWidth;
-                this.targetPoint.PercentageY = mousePos.Y * 100f / this.mapCanvas.ActualHeight;
-                this.targetPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
-                this.targetPoint.Z = this.currentMouseCoord.Z;
-                if(this.currentHeightLayer >= 0)
-                    // Associate area ID to see if we want just 2D distance in case one point has no area (and with that, Z value) with it
-                    this.targetPoint.AssociatedAreaID = (int)this.hoveredNavAreas[this.currentHeightLayer].ID;
-                else
-                    this.targetPoint.AssociatedAreaID = -1;
-
-                this.targetPoint.Circle = circle;
-                this.redrawLine = true;
-
-                this.drawPointsAndConnectingLine();
-            }
-            else if (this.DrawMode == eDrawMode.Bomb)
-            {
-                if (this.bombPoint == null)
-                    this.bombPoint = new MapPoint();
-
-                Point mousePos = Mouse.GetPosition(this.mapCanvas);
-                this.canvasRemove(this.bombPoint.Circle);
-
-                var circle = this.getBombEllipse(this.leftClickPointColour);
-
-                this.canvasAdd(circle);
-
-                this.bombPoint.PercentageX = mousePos.X * 100f / this.mapCanvas.ActualWidth;
-                this.bombPoint.PercentageY = mousePos.Y * 100f / this.mapCanvas.ActualHeight;
-                this.bombPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
-                this.bombPoint.Z = this.currentMouseCoord.Z;
-                if (this.currentHeightLayer >= 0)
-                    // Associate area ID to see if we want just 2D distance in case one point has no area (and with that, Z value) with it
-                    this.bombPoint.AssociatedAreaID = (int)this.hoveredNavAreas[this.currentHeightLayer].ID;
-                else
-                    this.bombPoint.AssociatedAreaID = -1;
-
-                this.bombPoint.Circle = circle;
-
-                this.redrawLine = true;
-
-                this.drawPointsAndConnectingLine();
-            }
+            this.setTargetOrBombPoint();
         }
 
         private void mapImage_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (this.playerPoint == null)
-                this.playerPoint = new MapPoint();
-
-            Point mousePos = Mouse.GetPosition(this.mapCanvas);
-            this.canvasRemove(this.playerPoint.Circle);
-
-            var circle = this.getPointEllipse(this.rightClickPointColour);
-
-            this.canvasAdd(circle);
-
-            this.playerPoint.PercentageX = mousePos.X * 100f / this.mapCanvas.ActualWidth;
-            this.playerPoint.PercentageY = mousePos.Y * 100f / this.mapCanvas.ActualHeight;
-            this.playerPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
-            this.playerPoint.Z = this.currentMouseCoord.Z;
-            if (this.currentHeightLayer >= 0)
-                // Associate area ID to see if we want just 2D distance in case one point has no area (and with that, Z value) with it
-                this.playerPoint.AssociatedAreaID = (int)this.hoveredNavAreas[this.currentHeightLayer].ID;
-            else
-                this.playerPoint.AssociatedAreaID = -1;
-
-            this.playerPoint.Circle = circle;
-
-            this.redrawLine = true;
-
-            this.drawPointsAndConnectingLine();
+            this.setPlayerPoint();
         }
 
         private void comboBoxMaps_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1807,6 +2182,50 @@ namespace Damage_Calculator
                 // Settings *might* have changed (User pressed "Save" so just in case, reload with new settings)
                 this.canvasReload();
             }
+        }
+
+        private void btnConnectToCsgo_Click(object sender, RoutedEventArgs e)
+        {
+            this.establishCsgoConnection();
+        }
+
+        private async void btnSetAsTargetPos_Click(object sender, RoutedEventArgs e)
+        {
+            // Get player position
+            Vector3 playerPos = await SteamShared.Globals.Settings.CsgoSocket.GetPlayerPosition();
+
+            if (playerPos == null)
+            {
+                ShowMessage.Error("No valid in-game position was found.\n\nMake sure you're not on a server that you're not the admin on.");
+                return;
+            }
+
+            this.setTargetOrBombPoint(playerPos);
+        }
+
+        private async void btnSetAsPlayerPos_Click(object sender, RoutedEventArgs e)
+        {
+            // Get player position
+            Vector3 playerPos = await SteamShared.Globals.Settings.CsgoSocket.GetPlayerPosition();
+
+            if (playerPos == null)
+            {
+                ShowMessage.Error("No valid in-game position was found.\n\nMake sure you're not on a server that you're not the admin on.");
+                return;
+            }
+
+            this.setPlayerPoint(playerPos);
+        }
+
+        private async void btnLoadCurrentMap_Click(object sender, RoutedEventArgs e)
+        {
+            await this.loadCurrentMap();
+        }
+
+        private async void btnDisconnectFromCsgo_Click(object sender, RoutedEventArgs e)
+        {
+            await SteamShared.Globals.Settings.CsgoSocket.DisconnectAsync();
+            this.setPlayerConnected(false);
         }
         #endregion
     }

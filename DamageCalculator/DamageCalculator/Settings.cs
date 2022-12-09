@@ -41,6 +41,10 @@ namespace Damage_Calculator
         public bool ShowMapsMissingNav { get; set; } = true;
         public bool ShowMapsMissingAin { get; set; } = true;
 
+        // OTHER
+
+        public ushort NetConPort { get; set; } = 2121;
+
         public object Clone()
         {
             return this.MemberwiseClone();

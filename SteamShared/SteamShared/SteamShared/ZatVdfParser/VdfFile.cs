@@ -41,6 +41,9 @@ namespace SteamShared.ZatVdfParser
         }
         private void Parse(string filePathOrText, bool parseTextDirectly)
         {
+            if (!parseTextDirectly && !File.Exists(filePathOrText))
+                return;
+
             Element? currentLevel = null;
 
             // Generate stream from string in case we want to read it directly, instead of using a file stream (boolean parameter)
@@ -59,7 +62,9 @@ namespace SteamShared.ZatVdfParser
                         return;
 
                     line = line.Trim();
-                    string[] parts = line.Split('"');
+                    // We don't want to split if " is escaped with \
+                    // If " is preceeded by an even number of \, it will get split
+                    string[] parts = splitEscaped(line, '"', '\\');
 
                     if (line.StartsWith("//"))
                     {
@@ -102,6 +107,55 @@ namespace SteamShared.ZatVdfParser
                 }
             }
         }
+        #endregion
+
+        #region Private methods
+
+        private string[] splitEscaped(string text, char delimiter, char escapeCharacter)
+        {
+            // Example text with delimiter " and escape character \ would be:
+            // "MyPassword" "My password is \"1234\""
+            // ^          ^ ^                       ^   << Splits are marked
+
+            List<string> splitStrings = new List<string>();
+
+            bool escaped = false;
+            string currentSection = string.Empty;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (text[i] == delimiter)
+                {
+                    if (!escaped)
+                    {
+                        splitStrings.Add(currentSection);
+                        currentSection = string.Empty;
+
+                        if (i + 1 == text.Length)
+                            // The last char in the string is a delimiter, so add that section now, because we won't iterate over it later
+                            splitStrings.Add(currentSection);
+
+                        continue;
+                    }
+
+                    escaped = false;
+                }
+
+                if (text[i] == escapeCharacter)
+                    escaped = !escaped;
+
+                currentSection += text[i];
+
+                if (i + 1 == text.Length)
+                {
+                    // This was the last character, but wasn't a delimiter
+                    splitStrings.Add(currentSection);
+                }
+            }
+
+            return splitStrings.ToArray();
+        }
+
         #endregion
 
         #region OPERATORS

@@ -37,6 +37,9 @@ namespace Damage_Calculator
         public wndSettings(SteamShared.Models.CsgoMap currentMap)
         {
             InitializeComponent();
+            this.ushortNetConPort.Minimum = 1; // Because we will have TCP, Port 0 is reserved
+            this.ushortNetConPort.Maximum = ushort.MaxValue; // Maximum port number, should already be implied, but I want to make sure
+
             this.currentMap = currentMap;
             this.MaxHeight = System.Windows.SystemParameters.PrimaryScreenHeight;
             this.settings = (Settings)Globals.Settings.Clone();
@@ -98,6 +101,9 @@ namespace Damage_Calculator
             this.mnuShowMapsMissingBsp.IsChecked = this.settings.ShowMapsMissingBsp;
             this.mnuShowMapsMissingNav.IsChecked = this.settings.ShowMapsMissingNav;
             this.mnuShowMapsMissingAin.IsChecked = this.settings.ShowMapsMissingAin;
+
+            // Other
+            this.ushortNetConPort.Value = this.settings.NetConPort;
         }
 
         private void saveSettings()
@@ -154,6 +160,9 @@ namespace Damage_Calculator
             this.settings.ShowMapsMissingNav = (bool)this.mnuShowMapsMissingNav.IsChecked;
             this.settings.ShowMapsMissingAin = (bool)this.mnuShowMapsMissingAin.IsChecked;
 
+            // Other
+            this.settings.NetConPort = this.ushortNetConPort.Value ?? this.settings.NetConPort;
+
             Globals.Settings = this.settings;
             Globals.SaveSettings();
         }
@@ -165,6 +174,12 @@ namespace Damage_Calculator
 
         private void btnSave_Click(object sender, RoutedEventArgs e)
         {
+            if (this.ushortNetConPort.Value == null)
+            {
+                ShowMessage.Error("Please set the NetConPort to a custom value, or to the default.");
+                return;
+            }
+
             this.DialogResult = true; // Tell main window to reload with new settings
             this.saveSettings();
             this.Close();

@@ -11,5 +11,7 @@ namespace SteamShared.Models
         public SteamHelper SteamHelper = new SteamHelper();
 
         public CsgoHelper CsgoHelper = new CsgoHelper();
+
+        public CsgoSocketConnection CsgoSocket = new CsgoSocketConnection();
     }
 }

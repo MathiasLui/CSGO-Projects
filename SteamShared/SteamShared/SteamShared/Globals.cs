@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
@@ -12,6 +13,7 @@ namespace SteamShared
     public static class Globals
     {
         public static Models.Settings Settings = new Models.Settings();
+        public static readonly string ArgumentPattern = "[\\\"\"].+?[\\\"\"]|[^ ]+";
 
         public static BitmapImage BitmapToImageSource(Bitmap src)
         {
@@ -40,6 +42,36 @@ namespace SteamShared
                     return (T)System.Runtime.InteropServices.Marshal.PtrToStructure(new IntPtr(p), typeof(T))!;
                 }
             }
+        }
+
+        public static bool ComparePaths(string path1, string path2)
+        {
+            // If it's a file that exists, remove the name from either to get the directory
+            if(File.Exists(path1))
+                path1 = Path.GetDirectoryName(path1)!;
+            if (File.Exists(path2))
+                path1 = Path.GetDirectoryName(path2)!;
+
+            if (path1 == null && path2 == null)
+                // They're technically the same
+                return true;
+            else if (path1 == null || path2 == null)
+                return false;
+
+            // Take care of back and forward slashes
+            path1 = Path.GetFullPath(path1);
+            path2 = Path.GetFullPath(path2);
+
+            // Add another temp folder at the back and get the name of its parent directory,
+            // thus removing that temp folder again,
+            // basically getting rid of a trailing \\ at the end, if existent
+            path1 = Path.Combine(path1, "temp");
+            path2 = Path.Combine(path2, "temp");
+
+            path1 = Path.GetDirectoryName(path1)?.ToLower()!;
+            path2 = Path.GetDirectoryName(path2)?.ToLower()!;
+
+            return path1 == path2;
         }
 
         public static float Map(float s, float a1, float a2, float b1, float b2)

@@ -2,12 +2,15 @@
 using SteamShared.ZatVdfParser;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Management;
 
 namespace SteamShared
 {
@@ -18,6 +21,8 @@ namespace SteamShared
         public static readonly float DuckModifier = 0.34f;
 
         public static readonly float WalkModifier = 0.52f;
+
+        public static readonly int GameID = 730;
 
         /// <summary>
         /// Gets the prefixes allowed for maps when using <see cref="GetMaps"/>.
@@ -48,7 +53,7 @@ namespace SteamShared
 
         public CsgoHelper()
         {
-            // Nothing to do
+            // Nothing to do, don't use this ctor, aside from before the program initialises.
         }
 
         public CsgoHelper(string csgoPath)
@@ -65,6 +70,25 @@ namespace SteamShared
             return this.Validate(this.CsgoPath!);
         }
 
+        public (Process?,string?) GetRunningCsgo()
+        {
+            // This is used as the normal process handle
+            Process? csgoProcess = Process.GetProcessesByName("csgo").FirstOrDefault(p => Globals.ComparePaths(p.MainModule?.FileName!, this.CsgoPath!));
+            
+            // And this is used for grabbing the command line arguments the process was started with
+            string? cmdLine = string.Empty;
+
+            var mgmtClass = new ManagementClass("Win32_Process");
+            foreach (ManagementObject o in mgmtClass.GetInstances())
+            {
+                if (o["Name"].Equals("csgo.exe"))
+                {
+                    cmdLine = o["CommandLine"].ToString();
+                }
+            }
+
+            return (csgoProcess, cmdLine);
+        }
 
         /// <summary>
         /// Validates files and directories for CS:GO installed in the given path.
@@ -90,7 +114,11 @@ namespace SteamShared
 
         public List<CsgoMap> GetMaps()
         {
-            List<string> mapTextFiles = Directory.GetFiles(System.IO.Path.Combine(this.CsgoPath!, "csgo\\resource\\overviews")).ToList().Where(f => f.ToLower().EndsWith(".txt")).Where(f =>
+            string mapOverviewsPath = System.IO.Path.Combine(this.CsgoPath!, "csgo", "resource", "overviews");
+            if (!Directory.Exists(mapOverviewsPath))
+                return new List<CsgoMap>();
+
+            List<string> mapTextFiles = Directory.GetFiles(mapOverviewsPath).ToList().Where(f => f.ToLower().EndsWith(".txt")).Where(f =>
                 this.mapFileNameValid(f)).ToList();
 
             List<CsgoMap> maps = new List<CsgoMap>();
@@ -244,6 +272,35 @@ namespace SteamShared
             }
 
             return maps;
+        }
+
+        /// <summary>
+        /// Gets the launch options of the specified Steam user.
+        /// </summary>
+        /// <param name="user">The Steam user of which to get the launch options.</param>
+        /// <returns>
+        /// The launch options, 
+        /// or null if an error occurred, or if the passed <see cref="SteamUser.AbsoluteUserdataFolderPath"/> was wrong or <see langword="null"/>
+        /// </returns>
+        public string? GetLaunchOptions(SteamUser user)
+        {
+            if (user.AbsoluteUserdataFolderPath == null)
+                return null;
+
+            string localUserCfgPath = Path.Combine(user.AbsoluteUserdataFolderPath, "config", "localconfig.vdf");
+
+            if (localUserCfgPath == null)
+                return null;
+
+            VDFFile localConfigVdf = new VDFFile(localUserCfgPath);
+
+            string? launchOptions = localConfigVdf?["UserLocalConfigStore"]?["Software"]?["Valve"]?["Steam"]?["apps"]?["730"]?["LaunchOptions"]?.Value;
+
+            if (launchOptions == null)
+                return null;
+
+            // If there are " escaped like this \" we want them to be unescaped
+            return Regex.Replace(launchOptions, "\\\\(.)", "$1");
         }
 
         public List<CsgoWeapon> GetWeapons()

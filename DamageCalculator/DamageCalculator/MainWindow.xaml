@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Damage_Calculator"
         mc:Ignorable="d"
-        Title="CS:GO Damage Calculator" Height="566" Width="1030" MinHeight="700" MinWidth="1000"
+        Title="CS:GO Damage Calculator" Height="566" Width="1030" MinHeight="845" MinWidth="1000"
         Style="{DynamicResource CustomWindowStyle}"
         WindowStartupLocation="CenterScreen" Icon="27.ico"
         WindowState="Maximized"
@@ -29,7 +29,7 @@
                 <RowDefinition />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="160" />
+                <ColumnDefinition Width="170" />
                 <ColumnDefinition />
                 <ColumnDefinition Width="250" />
             </Grid.ColumnDefinitions>
@@ -56,7 +56,7 @@
                 <Rectangle x:Name="rectTop" VerticalAlignment="Top" Grid.Row="1" Height="1" Fill="White" Grid.ColumnSpan="3" />
             <Rectangle x:Name="rectLeftSide" HorizontalAlignment="Left" Width="1" Grid.Row="1" Grid.Column="1" Fill="White" />
             <Rectangle x:Name="rectRightSide" HorizontalAlignment="Right" Width="1" Grid.Row="1" Grid.Column="1" Fill="White" />
-            <StackPanel x:Name="leftStackPanel" Margin="10,20,0,0" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Stretch">
+            <StackPanel x:Name="leftStackPanel" Margin="10,20,10,0" Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Stretch">
                 <StackPanel>
                     <StackPanel>
                         <TextBlock x:Name="lblPlayerStance" Text="Player stance:" Visibility="Collapsed" FontSize="14" FontWeight="Bold" />
@@ -82,10 +82,22 @@
                         <TextBlock Text="Weapon used:" FontSize="14" FontWeight="Bold" />
                         <ComboBox x:Name="comboWeapons" MinWidth="100" MaxWidth="200" HorizontalAlignment="Left" SelectionChanged="comboWeapons_SelectionChanged" />
                     </StackPanel>
-                    <StackPanel Margin="0,20,0,0">
+                    <StackPanel x:Name="stackDamageFirearm" Margin="0,20,0,0">
                         <TextBlock Text="Resulting damage:" FontSize="14" FontWeight="Bold" />
                         <TextBlock x:Name="txtResult" Text="0" Foreground="IndianRed" FontSize="18" />
                         <TextBlock x:Name="txtResultArmor" Text="0" Foreground="CadetBlue" FontSize="14" />
+                    </StackPanel>
+                    <StackPanel x:Name="stackDamageBomb" Visibility="Collapsed"  Margin="0,20,0,0">
+                        <TextBlock Text="Resulting damage" FontSize="14" FontWeight="Bold" />
+                        <TextBlock Text="Min:" FontSize="12" Margin="0,10,0,0" />
+                        <TextBlock x:Name="txtResultBombMin" Text="0" Foreground="IndianRed" FontSize="14" />
+                        <TextBlock x:Name="txtResultArmorBombMin" Text="0" Foreground="CadetBlue" FontSize="12" />
+                        <TextBlock Text="Likely:" FontSize="14" FontWeight="DemiBold" Margin="0,10,0,0" />
+                        <TextBlock x:Name="txtResultBombMedian" Text="0" Foreground="IndianRed" FontSize="18" />
+                        <TextBlock x:Name="txtResultArmorBombMedian" Text="0" Foreground="CadetBlue" FontSize="14" />
+                        <TextBlock Text="Max:" FontSize="12" Margin="0,10,0,0" />
+                        <TextBlock x:Name="txtResultBombMax" Text="0" Foreground="IndianRed" FontSize="14" />
+                        <TextBlock x:Name="txtResultArmorBombMax" Text="0" Foreground="CadetBlue" FontSize="12" />
                     </StackPanel>
                     <StackPanel Margin="0,20,0,0">
                         <TextBlock Text="Distance moved.." FontSize="14" FontWeight="Bold" />
@@ -102,6 +114,19 @@
                             <TextBlock x:Name="txtTimeCrouching" Text="None" TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
+                    <GroupBox Margin="0,20,0,0" Header="In-game">
+                        <Grid>
+                            <StackPanel x:Name="stackInGameDisconnected">
+                                <Button x:Name="btnConnectToCsgo" Content="Connect to CS:GO" FontSize="10" Click="btnConnectToCsgo_Click" />
+                            </StackPanel>
+                            <StackPanel x:Name="stackInGameConnected" Visibility="Collapsed">
+                                <Button x:Name="btnSetAsTargetPos" Content="Set as target/bomb position" Foreground="Red" FontSize="10" Click="btnSetAsTargetPos_Click" />
+                                <Button x:Name="btnSetAsPlayerPos" Content="Set as player position" Foreground="Green" FontSize="10"  Margin="0,5,0,0" Click="btnSetAsPlayerPos_Click" />
+                                <Button x:Name="btnLoadCurrentMap" Content="Load current map" FontSize="10" Foreground="MediumSlateBlue"  Margin="0,15,0,0" Click="btnLoadCurrentMap_Click" />
+                                <Button x:Name="btnDisconnectFromCsgo" Content="Disconnect from CS:GO" Background="DarkRed" FontSize="10" Margin="0,15,0,0" Click="btnDisconnectFromCsgo_Click" />
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
                 </StackPanel>
             </StackPanel>
             <local:ZoomBorder x:Name="rightZoomBorder" Grid.Row="1" Grid.Column="1" Margin="10" ClipToBounds="True" SizeChanged="rightZoomBorder_SizeChanged">

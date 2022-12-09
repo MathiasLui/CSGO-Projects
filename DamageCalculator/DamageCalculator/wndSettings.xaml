@@ -70,7 +70,7 @@
                 <ext:IntegerUpDown x:Name="intCurrentMapCoordsOffsetY" Width="80" Margin="5,0,0,0" Value="0" Background="#222222" Foreground="White" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                <Label Content="Current map multiplier override" />
+                <Label Content="Current map multiplier override:" />
                 <ext:SingleUpDown x:Name="intCurrentMapMultiplierOverride" Width="80" Margin="5,0,0,0" Value="0" Background="#222222" Foreground="White" />
                 <Label Content="0 = off, original =" Margin="5,0,0,0" />
                 <Label x:Name="txtCurrentMapMultiplier" Padding="0,5" Content="0" />
@@ -84,6 +84,15 @@
                     <CheckBox x:Name="mnuShowMapsMissingBsp"  Content="Show maps with missing map file" />
                     <CheckBox x:Name="mnuShowMapsMissingNav"  Content="Show maps with missing NAV file" />
                     <CheckBox x:Name="mnuShowMapsMissingAin"  Content="Show maps with missing AIN file" />
+                </StackPanel>
+            </GroupBox>
+            <GroupBox Header="Misc" BorderBrush="Gray" Margin="0,10,0,0">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Label Content="NetConPort:" />
+                        <ext:UShortUpDown x:Name="ushortNetConPort" Width="80" Margin="5,0,0,0" Value="2121" Background="#222222" Foreground="White" />
+                        <Label Content="non-zero, default = 2121" Margin="5,0,0,0" />
+                    </StackPanel>
                 </StackPanel>
             </GroupBox>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="10" Height="25">

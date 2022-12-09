@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using SteamShared.ZatVdfParser;
 using Microsoft.Win32;
 using SteamShared.Models;
+using System.Diagnostics;
 
 namespace SteamShared
 {
@@ -14,6 +15,7 @@ namespace SteamShared
     {
         private string? steamPath;
         private List<SteamLibrary>? steamLibraries;
+        public List<SteamGame>? InstalledGames;
 
         /// <summary>
         /// Gets the absolute path to the Steam install directory.
@@ -142,6 +144,14 @@ namespace SteamShared
 #endif
         }
 
+        public void UpdateInstalledGames(bool force = false)
+        {
+            if (!force && this.InstalledGames != null)
+                return;
+
+            this.InstalledGames = this.GetInstalledGames();
+        }
+
         public List<SteamGame>? GetInstalledGames()
         {
             var steamLibraries = this.GetSteamLibraries();
@@ -228,6 +238,87 @@ namespace SteamShared
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Gets the most recently logged in Steam user, based on the "MostRecent" value.
+        /// </summary>
+        /// <returns>
+        /// The most recent logged in Steam user, or <see langword="null"/>, if none has been found or an error has occurred.
+        /// </returns>
+        public SteamUser? GetMostRecentSteamUser()
+        {
+            string steamPath = this.SteamPath;
+
+            if (steamPath == null) 
+                return null;
+
+            string usersFilePath = Path.Combine(steamPath, "config", "loginusers.vdf");
+
+            if (!File.Exists(usersFilePath))
+                return null;
+
+            VDFFile vdf = new VDFFile(usersFilePath);
+
+            var users = vdf?["users"]?.Children;
+
+            if (users == null)
+                return null;
+
+            SteamUser? mostRecentUser = null;
+
+            foreach (var user in users)
+            {
+                if (int.TryParse(user["MostRecent"]?.Value, out int mostRecent) && Convert.ToBoolean(mostRecent))
+                {
+                    // We found a "most recent" user
+                    mostRecentUser = new SteamUser();
+
+                    if(ulong.TryParse(user.Name, out ulong steamID64))
+                    {
+                        mostRecentUser.SteamID64 = steamID64;
+                    }
+
+                    mostRecentUser.AccountName = user["AccountName"].Value;
+                    mostRecentUser.PersonaName = user["PersonaName"].Value;
+
+                    if (ulong.TryParse(user["Timestamp"].Value, out ulong lastLoginUnixTime))
+                    {
+                        mostRecentUser.LastLogin = lastLoginUnixTime;
+                    }
+
+                    mostRecentUser.AbsoluteUserdataFolderPath = Path.Combine(steamPath, "userdata", mostRecentUser.AccountID.ToString());
+                }
+            }
+
+            return mostRecentUser;
+        }
+
+        /// <summary>
+        /// Starts the given steam game, with the given additional arguments, if possible.
+        /// </summary>
+        /// <param name="gameID">The ID of the game.</param>
+        /// <param name="arguments">
+        /// The arguments passed to that game.
+        /// Note, that the default arguments set by the user in the UI are also passed to the app, these are just additional.
+        /// </param>
+        public void StartApp(int gameID, string arguments)
+        {
+            string? steamPath = this.SteamPath;
+            this.UpdateInstalledGames(); // Won't force update, if already set
+
+            SteamGame? gameToStart = this.InstalledGames?.FirstOrDefault(game => game.AppId == gameID);
+
+            if (steamPath == null || gameToStart == null)
+                return;
+
+            var startInfo = new ProcessStartInfo();
+            startInfo.UseShellExecute = false; // Make double sure
+            startInfo.CreateNoWindow = false;
+            startInfo.FileName = Path.Combine(steamPath, "steam.exe");
+            startInfo.Arguments = $"-applaunch {gameID}" + (String.IsNullOrWhiteSpace(arguments) ? string.Empty : $" {arguments}");
+
+            Process.Start(startInfo);
         }
 
         #region Private Methods

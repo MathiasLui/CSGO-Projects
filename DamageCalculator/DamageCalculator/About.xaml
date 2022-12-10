@@ -7,17 +7,23 @@
         mc:Ignorable="d"
         Style="{DynamicResource CustomWindowStyle}"
         WindowStartupLocation="CenterOwner"
-        Title="About" Height="335" Width="422" ResizeMode="NoResize">
+        Title="About" Height="493" Width="418" ResizeMode="NoResize">
     <Grid>
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
             <TextBlock Text="Made by: Matty_L" FontSize="14" />
             <TextBlock Text="Special thanks to SlothSquadron" FontSize="14" Margin="0,20,0,0" />
             <TextBlock Text="(for being quick and helpful with some questions that I had)" />
-            <TextBlock Text="and Zat" FontSize="14" Margin="0,20,0,0" />
-            <TextBlock Text="(for the VDF parser pasta, had to modify it, tho)" />
-            <TextBlock Text="and the UC users d3d9x and Casual_Hacker" FontSize="14" Margin="0,20,0,0" />
-            <TextBlock Text="(for the bomb damage pasta)" />
-            <TextBlock Foreground="LightSeaGreen" Margin="0,20,0,0" FontSize="14" Text="Any feedback or bug findings are more than welcome and can be reported to mathias-lui@freenet.de or on GameBanana." TextWrapping="Wrap" />
+            <TextBlock Text="and 3kliksphilip" FontSize="14" Margin="0,20,0,0" />
+            <TextBlock Text="(for mentioning that NAV files can be BSP-packed)" />
+            <TextBlock Text="and the UC user Zat" FontSize="14" Margin="0,20,0,0" />
+            <TextBlock Text="(for posting the VDF parser pasta base)" />
+            <TextBlock Text="and Casual_Hacker" FontSize="14" Margin="0,20,0,0" />
+            <TextBlock Text="(for the armor scale pasta)" />
+            <TextBlock Text="as well as sapphyrus" FontSize="14" Margin="0,20,0,0" />
+            <TextBlock Text="(for mentioning the random bomb damage factor)" />
+            <TextBlock Text="and AldaVadda" FontSize="14" Margin="0,20,0,0" />
+            <TextBlock Text="(for always being ready to help, enduring me)" />
+            <TextBlock Foreground="LightSeaGreen" Margin="0,20,0,0" FontSize="14" Text="Any feedback or bug findings are more than welcome and can be reported on GameBanana." TextWrapping="Wrap" />
             <TextBlock x:Name="txtVersion" Margin="0,20,0,0" Text="Version XXX" />
         </StackPanel>
     </Grid>

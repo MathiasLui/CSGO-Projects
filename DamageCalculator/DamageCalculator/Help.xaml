@@ -17,7 +17,7 @@
                 </StackPanel>
                 <StackPanel Margin="0,10,0,0">
                     <TextBlock Text="Sidebar left" FontSize="24" Foreground="#FF0093E0" />
-                    <TextBlock FontSize="16" Text="On the left side you can select the desired weapon, armor and the place where the shot will hit. If you select 'Bomb' mode at the top, you can only select whether kevlar is worn. Explosions will always apply to the torso, so the selection is hidden. The resulting damage to body and kevlar is shown underneath." Margin="0,5,0,0" TextWrapping="Wrap" />
+                    <TextBlock FontSize="16" Text="On the left side you can select the desired weapon, armor and the place where the shot will hit. If you select 'Bomb' mode at the top, you can only select whether kevlar is worn, and whether the player is standing or crouching. Explosions will always apply to the torso, so this selection is hidden. The resulting damage to body and kevlar is shown underneath." Margin="0,5,0,0" TextWrapping="Wrap" />
                 </StackPanel>
                 <StackPanel Margin="0,10,0,0">
                     <TextBlock Text="Sidebar right" FontSize="24" Foreground="#FF0093E0" />
@@ -29,11 +29,11 @@
                 </StackPanel>
                 <StackPanel Margin="0,10,0,0">
                     <TextBlock Text="Top right info" FontSize="24" Foreground="#FF0093E0" />
-                    <TextBlock FontSize="16" Text="The top right corner shows the distance in metres and units/inches, that is drawn on the map by the user." Margin="0,5,0,0" TextWrapping="Wrap" />
+                    <TextBlock FontSize="16" Text="The top right corner shows the distance in metres and units/inches, that is drawn on the map, in the case of the bomb this will be a minimum and maximum, since the game chooses randomly between those." Margin="0,5,0,0" TextWrapping="Wrap" />
                 </StackPanel>
                 <StackPanel Margin="0,10,0,0">
                     <TextBlock Text="Map info" FontSize="24" Foreground="#FF0093E0" />
-                    <TextBlock FontSize="16" Text="The bottom right hand corner shows, if the loaded map has a corresponding map (BSP) and nav (NAV) file inside of the '/csgo/maps' folder. It also shows the maximum bomb damage you can get unarmored, and the bomb radius calculated from that. These infos only exist for defusal maps." Margin="0,5,0,0" TextWrapping="Wrap" />
+                    <TextBlock FontSize="16" Text="The bottom right hand corner shows, if the loaded map has a corresponding map (BSP) and nav (NAV) file inside of the '/csgo/maps' folder. It also shows the maximum theoretical bomb damage you can get unarmored, and the bomb radius calculated from that. These infos only exist for defusal maps." Margin="0,5,0,0" TextWrapping="Wrap" />
                 </StackPanel>
                 <StackPanel Margin="0,10,0,0">
                     <TextBlock Text="NAV areas" FontSize="24" Foreground="#FF0093E0" />
@@ -42,6 +42,14 @@
                 <StackPanel Margin="0,10,0,0">
                     <TextBlock Text="Map" FontSize="24" Foreground="#FF0093E0" />
                     <TextBlock FontSize="16" Text="The map in the middle shows the general spawn areas and bomb sites defined in the text file, as well as spawn positions and directions from the map file and NAV areas, if activated and available. The middle of a spawn is bright, if it's a priority spawn, otherwise dark, hostages however are filled with a red colour. All of these can be hidden in the 'Settings' menu, 2v2 spawns can be hidden separately, while all other spawn types are treated as 'general'. With a left click you set the first (target or bomb, depending on the mode) point on the map, and with a right click you set the second (player) point. These are used to calculate damage over range. You can zoom with your mouse wheel, pan by holding spacebar while left click dragging, and reset the zoom by clicking down the mouse wheel." Margin="0,5,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Margin="0,10,0,0">
+                    <TextBlock Text="Bomb damage" FontSize="24" Foreground="#FF0093E0" />
+                    <TextBlock FontSize="16" Text="Bomb damage is calculated on a range, randomly based between two points, so the minimum and maximum possible values are shown. The 'Likely' value is just the average." Margin="0,5,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Margin="0,10,0,0">
+                    <TextBlock Text="Connection to CS:GO" FontSize="24" Foreground="#FF0093E0" />
+                    <TextBlock FontSize="16" Text="A TCP socket connection to CS:GO will be opened, which requires a start option for CS:GO. Clicking on the button should automatically detect everything. If the game needs to be (re-)started, just wait until the game opened and click again. If you're connecting/connected to a map while clicking 'Connect', it will automatically open the correct map, if possible. After this you can use the two buttons to set the current in-game position as one of the points. Since we're just using the console, without reading any memory, we will need sv_cheats for the latter to work, thus only working on servers where you have admin rights, for example offline with bots." Margin="0,5,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

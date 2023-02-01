@@ -7,23 +7,25 @@
         mc:Ignorable="d"
         Style="{DynamicResource CustomWindowStyle}"
         WindowStartupLocation="CenterOwner"
-        Title="About" Height="493" Width="418" ResizeMode="NoResize">
+        Title="About" Height="493" Width="418" ResizeMode="NoResize" SizeToContent="Height">
     <Grid>
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
             <TextBlock Text="Made by: Matty_L" FontSize="14" />
-            <TextBlock Text="Special thanks to SlothSquadron" FontSize="14" Margin="0,20,0,0" />
-            <TextBlock Text="(for being quick and helpful with some questions that I had)" />
-            <TextBlock Text="and 3kliksphilip" FontSize="14" Margin="0,20,0,0" />
-            <TextBlock Text="(for mentioning that NAV files can be BSP-packed)" />
-            <TextBlock Text="and the UC user Zat" FontSize="14" Margin="0,20,0,0" />
-            <TextBlock Text="(for posting the VDF parser pasta base)" />
-            <TextBlock Text="and Casual_Hacker" FontSize="14" Margin="0,20,0,0" />
-            <TextBlock Text="(for the armor scale pasta)" />
-            <TextBlock Text="as well as sapphyrus" FontSize="14" Margin="0,20,0,0" />
-            <TextBlock Text="(for mentioning the random bomb damage factor)" />
-            <TextBlock Text="and AldaVadda" FontSize="14" Margin="0,20,0,0" />
-            <TextBlock Text="(for always being ready to help, enduring me)" />
-            <TextBlock Foreground="LightSeaGreen" Margin="0,20,0,0" FontSize="14" Text="Any feedback or bug findings are more than welcome and can be reported on GameBanana." TextWrapping="Wrap" />
+            <StackPanel x:Name="thanksStack" Visibility="Collapsed">
+                <TextBlock Text="Special thanks to SlothSquadron" FontSize="14" Margin="0,20,0,0" />
+                <TextBlock Text="(for being quick and helpful with some questions that I had)" />
+                <TextBlock Text="and 3kliksphilip" FontSize="14" Margin="0,20,0,0" />
+                <TextBlock Text="(for mentioning that NAV files can be BSP-packed)" />
+                <TextBlock Text="and the UC user Zat" FontSize="14" Margin="0,20,0,0" />
+                <TextBlock Text="(for posting the VDF parser pasta base)" />
+                <TextBlock Text="and Casual_Hacker" FontSize="14" Margin="0,20,0,0" />
+                <TextBlock Text="(for the armor scale pasta)" />
+                <TextBlock Text="as well as sapphyrus" FontSize="14" Margin="0,20,0,0" />
+                <TextBlock Text="(for mentioning the random bomb damage factor)" />
+                <TextBlock Text="and AldaVadda" FontSize="14" Margin="0,20,0,0" />
+                <TextBlock Text="(for always being ready to help, enduring me)" />
+            </StackPanel>
+            <TextBlock Foreground="LightSeaGreen" Margin="0,20,0,0" FontSize="14" Text="Any feedback or bug findings are more than welcome and can be reported on GameBanana or something idk." TextWrapping="Wrap" />
             <TextBlock x:Name="txtVersion" Margin="0,20,0,0" Text="Version XXX" />
         </StackPanel>
     </Grid>

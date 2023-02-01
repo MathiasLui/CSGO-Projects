@@ -2110,7 +2110,12 @@ namespace Damage_Calculator
 
         private void mnuAbout_Click(object sender, RoutedEventArgs e)
         {
-            About about = new About();
+            bool showThanks = false;
+
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+                showThanks = true;
+
+            About about = new About(showThanks);
             about.Owner = this;
             about.ShowDialog();
         }

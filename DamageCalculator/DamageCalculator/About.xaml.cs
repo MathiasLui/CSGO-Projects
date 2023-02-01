@@ -19,9 +19,13 @@ namespace Damage_Calculator
     /// </summary>
     public partial class About : Window
     {
-        public About()
+        public About(bool showThanks = false)
         {
             InitializeComponent();
+
+            if (showThanks)
+                this.thanksStack.Visibility = Visibility.Visible;
+
             txtVersion.Text = "Version " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
         }
     }

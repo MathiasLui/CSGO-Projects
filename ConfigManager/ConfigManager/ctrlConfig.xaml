@@ -1,0 +1,26 @@
+﻿<UserControl x:Name="userControl" x:Class="ConfigManager.ctrlConfig"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:ConfigManager"
+             mc:Ignorable="d" 
+             d:DesignHeight="30" d:DesignWidth="235" Width="Auto" Height="Auto">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </UserControl.Resources>
+    <Grid>
+        <Button x:Name="btnEditConfig" Margin="0" VerticalAlignment="Top" Height="30" Background="#FF4B4B4B" Click="btnEditConfig_Click" Foreground="White" Style="{DynamicResource ConfigButtonStyle}" >
+            <TextBlock x:Name="txtConfigName"/>
+        </Button>
+        <Image Source="Images/Trashbin.png" HorizontalAlignment="Right" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,5,0" />
+        <Rectangle x:Name="rectTrashbinMouseOver" Width="30" HorizontalAlignment="Right" Margin="0" MouseEnter="rectMouseOver_MouseEnter" MouseLeave="rectMouseOver_MouseLeave" MouseLeftButtonDown="rectMouseOver_MouseLeftButtonDown" MouseLeftButtonUp="rectMouseOver_MouseLeftButtonUp" Opacity="0" Loaded="rectMouseOver_Loaded">
+            <Rectangle.Fill>
+                <SolidColorBrush Color="#4CC3C3C3"/>
+            </Rectangle.Fill>
+        </Rectangle>
+        <Image Source="Images/StarEmpty.png" HorizontalAlignment="Right" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,35,0" />
+        <Image Source="Images/Star.png" HorizontalAlignment="Right" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,35,0" Visibility="{Binding IsFavourite, Converter={StaticResource BooleanToVisibilityConverter}, ElementName=userControl}" />
+        <Rectangle x:Name="rectFavouritesMouseOver" Width="30" HorizontalAlignment="Right" Margin="0,0,30,0" MouseEnter="rectMouseOver_MouseEnter" MouseLeave="rectMouseOver_MouseLeave" MouseLeftButtonDown="rectMouseOver_MouseLeftButtonDown" MouseLeftButtonUp="rectMouseOver_MouseLeftButtonUp" Opacity="0" Loaded="rectFavouritesMouseOver_Loaded" Fill="#4CC3C3C3"/>
+    </Grid>
+</UserControl>

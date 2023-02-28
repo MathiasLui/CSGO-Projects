@@ -26,7 +26,7 @@ namespace ConfigManager
     /// </summary>
     public partial class MainWindow : Window
     {
-        string m_sProgramVersion = "1.0.2";
+        string m_sProgramVersion = "1.1.0";
         static string m_sStartupPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CSGOConfigManager");
         string m_sStartupPathWithFileDefaultPath = System.IO.Path.Combine(m_sStartupPath, "DefaultPath.cfg");
         string m_sStartupPathWithFileFavourites = System.IO.Path.Combine(m_sStartupPath, "Favourites.cfg");

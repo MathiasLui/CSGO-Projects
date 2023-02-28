@@ -60,9 +60,10 @@ namespace ConfigManager
             //GET STEAM PATH
             m_nAmountOfSteamLibraries = 0;
             m_sSteamPath = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null).ToString();
-            string sConfig = File.ReadAllText(System.IO.Path.Combine(m_sSteamPath, "config", "config.vdf"));
-            m_sLibraries = getAllLibraries(sConfig);
-            m_sLibraries[0] = m_sSteamPath.Replace("/", "\\"); ; //Setting Default Library Path as index 0
+        
+            var steamHelper = new SteamShared.SteamHelper();
+            m_sLibraries = steamHelper.GetSteamLibraries().Select(lib => lib.Path).ToArray();
+
             m_nAmountOfSteamLibraries = m_sLibraries.Count();
             m_bAutoDetectedLibrary = false;
             foreach (string library in m_sLibraries)

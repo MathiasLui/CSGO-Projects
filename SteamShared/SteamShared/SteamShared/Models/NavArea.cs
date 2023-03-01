@@ -21,7 +21,7 @@ namespace SteamShared.Models
             this.ID = reader.ReadUInt32();
 
             if (navVersion <= 8)
-                this.AttributeBitField = BitConverter.GetBytes(reader.ReadByte());
+                this.AttributeBitField = BitConverter.GetBytes((short)reader.ReadByte()); // .NET 6 would cast the byte to a short, .NET 7 will be ambiguous between short and Half
             else if (navVersion <= 12)
                 this.AttributeBitField = BitConverter.GetBytes(reader.ReadUInt16());
             else if (navVersion >= 13)

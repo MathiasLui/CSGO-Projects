@@ -1113,18 +1113,18 @@ namespace Damage_Calculator
             }
 
             // Manage height
-            if (this.playerPoint.AssociatedAreaID < 0 ||
-                ((this.DrawMode == eDrawMode.Shooting && this.targetPoint.AssociatedAreaID < 0)
-                || (this.DrawMode == eDrawMode.Bomb && this.bombPoint.AssociatedAreaID < 0))) 
+            if (this.playerPoint.Z == null ||
+                ((this.DrawMode == eDrawMode.Shooting && this.targetPoint.Z == null)
+                || (this.DrawMode == eDrawMode.Bomb && this.bombPoint.Z == null))) 
             {
-                // One of the points has no area ID, and thus no Z coordinate
+                // One of the points has no Z coordinate set
                 leftZ = 0;
                 rightZ = 0;
             }
             else
             {
-                leftZ = this.DrawMode == eDrawMode.Shooting ? this.targetPoint.Z : this.bombPoint.Z;
-                rightZ = this.playerPoint.Z;
+                leftZ = (this.DrawMode == eDrawMode.Shooting ? this.targetPoint.Z : this.bombPoint.Z) ?? 0;
+                rightZ = this.playerPoint.Z ?? 0;
             }
 
             // Distance in units in 2D
@@ -1136,9 +1136,10 @@ namespace Damage_Calculator
                 float maxFactor = 1.0f;
 
                 // Add the appropriate height
-                // They use the middle of the oriented bounding box,
-                // which should be equal to the axis-aligned bounding box, but with additional yaw in the normal sense
-                // Since we already have the X-Y middle, we just add half of the height to get the Z-middle as well
+                // They use a random value,
+                // which should be between the player's origin + 0.7 times their eye level and 1 times their eye level
+                // Since we already have the X-Y middle, we just add 0.7 or 1 as a factor for the eye level,
+                // depending on if it's the min or max possible value we want to get
                 if (radioPlayerStanding.IsChecked == true)
                     rightZ += isMax ? eyeLevelStanding * maxFactor : eyeLevelStanding * minFactor;
                 else if(radioPlayerCrouched.IsChecked == true)
@@ -1900,6 +1901,7 @@ namespace Damage_Calculator
                 this.targetPoint.PercentageX = newPointPosPixels.X * 100f / this.mapCanvas.ActualWidth;
                 this.targetPoint.PercentageY = newPointPosPixels.Y * 100f / this.mapCanvas.ActualHeight;
                 this.targetPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
+                this.targetPoint.Z = null; // Initialise with null, just in case
                 this.targetPoint.Z = givenCoords == null ? this.currentMouseCoord.Z : givenCoords.Z;
                 if (this.currentHeightLayer >= 0 && givenCoords == null)
                 {
@@ -1937,6 +1939,7 @@ namespace Damage_Calculator
                 this.bombPoint.PercentageX = newPointPosPixels.X * 100f / this.mapCanvas.ActualWidth;
                 this.bombPoint.PercentageY = newPointPosPixels.Y * 100f / this.mapCanvas.ActualHeight;
                 this.bombPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
+                this.bombPoint.Z = null; // Initialise with null, just in case
                 this.bombPoint.Z = givenCoords == null ? this.currentMouseCoord.Z : givenCoords.Z;
                 if (this.currentHeightLayer >= 0 && givenCoords == null)
                 {
@@ -1977,6 +1980,7 @@ namespace Damage_Calculator
             this.playerPoint.PercentageX = newPointPosPixels.X * 100f / this.mapCanvas.ActualWidth;
             this.playerPoint.PercentageY = newPointPosPixels.Y * 100f / this.mapCanvas.ActualHeight;
             this.playerPoint.PercentageScale = circle.Width * 100f / this.mapCanvas.ActualWidth;
+            this.playerPoint.Z = null; // Initialise with null, just in case
             this.playerPoint.Z = givenCoords == null ? this.currentMouseCoord.Z : givenCoords.Z;
 
             if (this.currentHeightLayer >= 0 && givenCoords == null)

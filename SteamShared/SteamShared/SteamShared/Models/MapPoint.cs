@@ -25,9 +25,9 @@ namespace SteamShared.Models
         public double Y { get; set; }
 
         /// <summary>
-        /// The in-game Z-coordinate.
+        /// The in-game Z-coordinate, if any.
         /// </summary>
-        public double Z { get; set; }
+        public double? Z { get; set; }
 
         public int AssociatedAreaID { get; set; } = -1;
 

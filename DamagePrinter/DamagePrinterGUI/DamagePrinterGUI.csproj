@@ -2,12 +2,14 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net7.0-windows</TargetFramework>
 	<Version>0.1.0</Version>
 	<Authors>Mathias Lui</Authors>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <SignAssembly>False</SignAssembly>
+    <AssemblyVersion>0.1.0.1</AssemblyVersion>
+    <FileVersion>0.1.0.1</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

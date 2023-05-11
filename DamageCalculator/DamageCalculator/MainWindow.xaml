@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Damage_Calculator"
+        xmlns:extended="http://schemas.xceed.com/wpf/xaml/toolkit"
         mc:Ignorable="d"
         Title="CS:GO Damage Calculator" Height="566" Width="1030" MinHeight="845" MinWidth="1000"
         Style="{DynamicResource CustomWindowStyle}"
@@ -70,6 +71,10 @@
                             <CheckBox x:Name="chkKevlar" Content="Body armor" Checked="settings_Updated" Unchecked="settings_Updated" />
                         </StackPanel>
                         <CheckBox x:Name="chkArmorAny" Visibility="Collapsed" Content="Yes" Checked="settings_Updated" Unchecked="settings_Updated" />
+                        <StackPanel x:Name="stackArmorAmount" Visibility="Collapsed" Margin="15,0,0,0" Orientation="Horizontal">
+                            <TextBlock Text="Armor left:" />
+                            <TextBox x:Name="txtArmorAmount" Margin="5,0,0,0" TextChanged="settings_Updated" Width="50" Text="100"/>
+                        </StackPanel>
                     </StackPanel>
                     <StackPanel x:Name="stackAreaHit" Margin="0,20,0,0">
                         <TextBlock Text="Area hit:" FontSize="14" FontWeight="Bold" />

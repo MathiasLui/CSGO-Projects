@@ -101,6 +101,17 @@ namespace Damage_Calculator
         private double unitsDistanceMax = -1;
 
         /// <summary>
+        /// The amount of armor that the target has left for bomb or shooting damage calculation.
+        /// </summary>
+        private int armorLeft = 100;
+
+        /// <summary>
+        /// Indicates if the player has kevlar.
+        /// If yes, <see cref="armorLeft"/> will be the target's armor left.
+        /// </summary>
+        private bool hasKevlar = false;
+
+        /// <summary>
         /// Gets or sets the currently loaded map.
         /// </summary>
         private CsgoMap loadedMap;
@@ -1209,9 +1220,6 @@ namespace Damage_Calculator
                         if (chkHelmet.IsChecked == true)
                         {
                             // Has helmet
-                            double previousDamage = damage;
-                            damage *= this.selectedWeapon.ArmorPenetration / 100f;
-                            absorbedDamageByArmor = previousDamage - damage;
                             wasArmorHit = true;
                         }
                     }
@@ -1221,9 +1229,6 @@ namespace Damage_Calculator
                         if (chkKevlar.IsChecked == true)
                         {
                             // Has kevlar
-                            double previousDamage = damage;
-                            damage *= this.selectedWeapon.ArmorPenetration / 100f;
-                            absorbedDamageByArmor = previousDamage - damage;
                             wasArmorHit = true;
                         }
                     }
@@ -1235,9 +1240,6 @@ namespace Damage_Calculator
                         if (chkKevlar.IsChecked == true)
                         {
                             // Has kevlar
-                            double previousDamage = damage;
-                            damage *= this.selectedWeapon.ArmorPenetration / 100f;
-                            absorbedDamageByArmor = previousDamage - damage;
                             wasArmorHit = true;
                         }
                     }
@@ -1247,6 +1249,14 @@ namespace Damage_Calculator
                         damage *= 0.75f;
                     }
                     break;
+            }
+
+            if (wasArmorHit)
+            {
+                // Has helmet or kevlar
+                double previousDamage = damage;
+                damage = this.scaleDamageArmor(damage, this.armorLeft, armorPenetrationMultiplier: this.selectedWeapon.ArmorPenetration / 100f);
+                absorbedDamageByArmor = previousDamage - damage;
             }
 
             txtResult.Text = ((int)damage).ToString();
@@ -1261,10 +1271,10 @@ namespace Damage_Calculator
             // Now we can calculate the damage...
             double minDamage; 
             double minDamageArmor; 
-            this.getBombDamage(this.unitsDistanceMax, armorValue: 100, out minDamage, out minDamageArmor);
+            this.getBombDamage(this.unitsDistanceMax, armorValue: this.armorLeft, out minDamage, out minDamageArmor);
             double maxDamage;
             double maxDamageArmor;
-            this.getBombDamage(this.unitsDistanceMin, armorValue: 100, out maxDamage, out maxDamageArmor);
+            this.getBombDamage(this.unitsDistanceMin, armorValue: this.armorLeft, out maxDamage, out maxDamageArmor);
             
             txtResultBombMin.Text = ((int)minDamage).ToString();
             txtResultBombMax.Text = ((int)maxDamage).ToString();
@@ -1275,6 +1285,13 @@ namespace Damage_Calculator
             txtResultArmorBombMedian.Text = ((maxDamageArmor + minDamageArmor) / 2f).ToString();
         }
 
+        /// <summary>
+        /// Calculates bomb damage based on given factors.
+        /// </summary>
+        /// <param name="distance">The distance in units between bomb and player.</param>
+        /// <param name="armorValue">The armor the player has. Doesn't matter if <see cref="hasKevlar"/> is false.</param>
+        /// <param name="hpDamage">returns the amount of damage the player gets.</param>
+        /// <param name="armorDamage">returns the amount of armor damage the player gets.</param>
         private void getBombDamage(double distance, int armorValue, out double hpDamage, out double armorDamage)
         {
             // out params
@@ -1324,7 +1341,7 @@ namespace Damage_Calculator
 
             double flAdjustedDamageBeforeArmor = flAdjustedDamage;
 
-            if (chkArmorAny.IsChecked == true)
+            if (this.hasKevlar)
             {
                 flAdjustedDamage = scaleDamageArmor(flAdjustedDamage, armorValue);
                 armorDamage = flAdjustedDamage >= 1 ? Math.Ceiling((flAdjustedDamageBeforeArmor - flAdjustedDamage) / 2f) : 0;
@@ -1338,22 +1355,39 @@ namespace Damage_Calculator
         /// </summary>
         /// <param name="flDamage">The damage that was dealt to the player by the bomb.</param>
         /// <param name="armor_value">The amount of armor that the player had.</param>
+        /// <param name="armorPenetrationMultiplier">
+        /// The armor penetration multiplier between 0 and 1.
+        /// Default is 0.5 and can be used for bomb damage.
+        /// </param>
         /// <returns>the amount of damage that is actually dealt.</returns>
-        double scaleDamageArmor(double flDamage, int armor_value)
+        double scaleDamageArmor(double flDamage, int armor_value, double armorPenetrationMultiplier = 0.5)
         {
-            double flArmorRatio = 0.5d;
+            // Damage reduction ratio when wearing armor (armor penetration multiplier)
+            double flArmorRatio = armorPenetrationMultiplier;
+
+            // Armor will be reduced by half of what it absorbes. This is that factor and shouldn't be modified
             double flArmorBonus = 0.5d;
+            
+            // If player has armor do the calculation
             if (armor_value > 0)
             {
+                // Calculate new damage dealt to player (e.g. half of original with bomb)
                 double flNew = flDamage * flArmorRatio;
+
+                // Calculate amount of amor that should get subtracted (e.g. When it's 50% i.e. we use bomb damage, then it's the same as "flNew * 0.25")
                 double flArmor = (flDamage - flNew) * flArmorBonus;
 
+                // Check if the armor that subtracts is actually more than what the player has
                 if (flArmor > (double)armor_value)
                 {
+                    // Calculate the amount of damage that the armor actually absorbs (The armor that the player had left times two)
                     flArmor = (double)armor_value * (1d / flArmorBonus);
+
+                    // Subtract the absorbed damage from the original damage to get the new one
                     flNew = flDamage - flArmor;
                 }
 
+                // Just update the damage at the very end
                 flDamage = flNew;
             }
             return flDamage;
@@ -2039,6 +2073,8 @@ namespace Damage_Calculator
                 this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = this.stackDamageFirearm.Visibility = Visibility.Visible;
                 this.stackPlayerStance.Visibility = this.lblPlayerStance.Visibility = this.chkArmorAny.Visibility = this.stackDamageBomb.Visibility = Visibility.Collapsed;
             }
+
+            this.settings_Updated(null, null);
         }
 
         private void radioModeBomb_Checked(object sender, RoutedEventArgs e)
@@ -2050,6 +2086,8 @@ namespace Damage_Calculator
                 this.stackArmorSeparated.Visibility = this.stackAreaHit.Visibility = this.stackWeaponUsed.Visibility = this.stackDamageFirearm.Visibility = Visibility.Collapsed;
                 this.stackPlayerStance.Visibility = this.lblPlayerStance.Visibility = this.chkArmorAny.Visibility = this.stackDamageBomb.Visibility = Visibility.Visible;
             }
+
+            this.settings_Updated(null, null);
         }
 
         private void mapImage_LayoutUpdated(object sender, EventArgs e)
@@ -2087,6 +2125,51 @@ namespace Damage_Calculator
 
         private void settings_Updated(object sender, EventArgs e)
         {
+            // If we have a helmet, we definitely have body kevlar too
+            if (this.chkHelmet?.IsChecked == true && this.chkKevlar != null)
+            {
+                this.chkKevlar.IsChecked = true;
+            }
+
+            // Update the armor left stack's visibility
+            if (this.chkKevlar?.IsChecked == true && this.DrawMode == eDrawMode.Shooting
+                || this.chkArmorAny?.IsChecked == true && this.DrawMode == eDrawMode.Bomb)
+            {
+                if (this.stackArmorAmount != null)
+                    this.stackArmorAmount.Visibility = Visibility.Visible;
+
+                this.hasKevlar = true;
+            }
+            else
+            {
+                if (this.stackArmorAmount != null)
+                    this.stackArmorAmount.Visibility = Visibility.Collapsed;
+
+                this.hasKevlar = false;
+            }
+
+            // Validate kevlar value
+            if (this.hasKevlar)
+            {
+                if (int.TryParse(this.txtArmorAmount.Text, out int armorLeft)
+                    && armorLeft is >= 0 and <= 100)
+                {
+                    // Is valid armor value
+                    this.armorLeft = armorLeft;
+                }
+                else if (!string.IsNullOrWhiteSpace(this.txtArmorAmount.Text))
+                {
+                    if (armorLeft < 0)
+                        this.txtArmorAmount.Text = "0";
+                    else if (armorLeft > 100)
+                        this.txtArmorAmount.Text = "100";
+
+                    MessageBox.Show("The armor left should be between 0 and 100 points.", "Check armor points", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+            }
+
+            // Short circuit if we don't need to calculate anything yet
             if ((this.DrawMode == eDrawMode.Shooting && this.selectedWeapon == null) || !this.lineDrawn)
             {
                 if(txtResult != null && txtResultArmor != null)
@@ -2098,7 +2181,7 @@ namespace Damage_Calculator
             if (this.DrawMode == eDrawMode.Shooting)
                 this.calculateAndUpdateShootingDamage();
             else if (this.DrawMode == eDrawMode.Bomb)
-                calculateAndUpdateBombDamage();
+                this.calculateAndUpdateBombDamage();
 
             this.calculateDistanceDuration();
         }

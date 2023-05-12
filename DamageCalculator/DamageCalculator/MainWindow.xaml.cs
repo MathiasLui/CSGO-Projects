@@ -1282,7 +1282,7 @@ namespace Damage_Calculator
 
             txtResultArmorBombMin.Text = minDamageArmor.ToString();
             txtResultArmorBombMax.Text = maxDamageArmor.ToString();
-            txtResultArmorBombMedian.Text = ((maxDamageArmor + minDamageArmor) / 2f).ToString();
+            txtResultArmorBombMedian.Text = Math.Ceiling((maxDamageArmor + minDamageArmor) / 2f).ToString();
         }
 
         /// <summary>

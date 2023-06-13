@@ -18,8 +18,8 @@ namespace SteamShared
         public List<SteamGame>? InstalledGames;
 
         /// <summary>
-        /// Gets the absolute path to the Steam install directory.
-        /// If it can't be fetched (i.e. Steam is not installed) null is returned.
+        ///     The absolute path to the Steam install directory.
+        ///     If it can't be fetched (i.e. Steam is not installed) null is returned.
         /// </summary>
         public string? SteamPath
         {
@@ -34,8 +34,8 @@ namespace SteamShared
         }
 
         /// <summary>
-        /// Gets a list of all Steam libraries, and whether they're existent or not.
-        /// If it can't be fetched (i.e. Steam is not installed) null is returned.
+        ///     Gets a list of all Steam libraries, and whether they're existent or not.
+        ///     If it can't be fetched (i.e. Steam is not installed) null is returned.
         /// </summary>
         public List<SteamLibrary>? SteamLibraries
         {
@@ -50,7 +50,7 @@ namespace SteamShared
         }
 
         /// <summary>
-        /// Forcefully tries to update the <see cref="SteamPath"/> property with the current Steam path, even if it should be already set.
+        ///     Forcefully tries to update the <see cref="SteamPath"/> property with the current Steam path, even if it should be already set.
         /// </summary>
         public void UpdateSteamPath()
         {
@@ -58,9 +58,9 @@ namespace SteamShared
         }
 
         /// <summary>
-        /// Gets the path to the Steam install directory. (For external use <see cref="SteamPath"/> is preferred.)
+        ///     The path to the Steam install directory. (For external use <see cref="SteamPath"/> is preferred.)
         /// </summary>
-        /// <returns>The absolute path to the Steam install directory, or null if it can't be fetched.</returns>
+        /// <returns>the absolute path to the Steam install directory, or null if it can't be fetched.</returns>
         public string? GetSteamPath()
         {
             var steamKey = Registry.CurrentUser.OpenSubKey("software\\valve\\steam");
@@ -98,7 +98,7 @@ namespace SteamShared
 
             // Usually the config.vdf had "BaseInstallFolder_" entries,
             // now it seems that these entries don't exist anymore with reinstalls, and maybe they're not up-to-date anyways?
-            // Now we try reading the "libraryfolders.vdf", which now also contains the default library location
+            // Now we try reading the "libraryfolders.vdf", which now also contains the default library location (In the Steam folder, by default under C:)
 #if NEWLIBRARYLOCATION
             string configFilePath = Path.Combine(this.steamPath, "config", "libraryfolders.vdf");
             if (!File.Exists(configFilePath))
@@ -144,6 +144,10 @@ namespace SteamShared
 #endif
         }
 
+        /// <summary>
+        ///     Updates the <see cref="InstalledGames">list of installed steam games</see>.
+        /// </summary>
+        /// <param name="force">Whether to fetch them again, even if they were fetched before.</param>
         public void UpdateInstalledGames(bool force = false)
         {
             if (!force && this.InstalledGames != null)
@@ -152,10 +156,25 @@ namespace SteamShared
             this.InstalledGames = this.GetInstalledGames();
         }
 
+        /// <summary>
+        ///     Gets a list of fully installed Steam games, as seen by the manifest files.
+        /// </summary>
+        /// <remarks>
+        ///     Games are seen as fully installed, when their manifest file exists,
+        ///     and the manifest states that the game is fully installed.
+        ///     This means, that if the files are deleted manually, it might still be seen as installed,
+        ///     because the manifest file might not change.
+        /// </remarks>
+        /// <returns>
+        ///     a list of installed Steam games, with some manifest data,
+        ///     or <see langword="null"/>, if no games could be fetched or found.
+        /// </returns>
         public List<SteamGame>? GetInstalledGames()
         {
+            // Get all steam library paths
             var steamLibraries = this.GetSteamLibraries();
 
+            // If the steam path couldn't be fetched or no libraries exist, we short-circuit
             if (steamLibraries == null)
                 return null;
 
@@ -163,10 +182,11 @@ namespace SteamShared
 
             foreach(var library in steamLibraries)
             {
-                if (!library.DoesExist)
+                if (!library.DoesExist || library.Path is null)
                     continue;
 
-                List<string> manifestFiles = Directory.GetFiles(Path.Combine(library.Path!, "steamapps")).ToList().Where(f => this.isAppManifestFile(f)).ToList();
+                List<string> manifestFiles = Directory.GetFiles(Path.Combine(library.Path, "steamapps"))
+                                                                .Where(f => this.isAppManifestFile(f)).ToList();
 
                 foreach (string manifestFile in manifestFiles)
                 {
@@ -178,9 +198,13 @@ namespace SteamShared
 
                     var root = manifestVDF["AppState"];
 
+                    if (root == null)
+                        // Parse error of manifest, skip it
+                        continue;
+
                     var currGame = new SteamGame();
 
-                    this.populateGameInfo(currGame, root!);
+                    this.populateGameInfo(currGame, root, library.Path);
 
                     if((currGame.GameState & (int)GameState.StateFullyInstalled) != 0)
                     {
@@ -193,69 +217,83 @@ namespace SteamShared
             return allGames;
         }
 
-        public string? GetGamePathFromExactName(string gameName)
+        /// <summary>
+        ///     Gets the absolute path of the game name (not folder) provided.
+        /// </summary>
+        /// <param name="gameName">The name of the game. The case, as well as leading and trailing whitespaces don't matter.</param>
+        /// <param name="shouldBeFullyInstalled">Whether to only return it, if it's marked as fully installed.</param>
+        /// <returns>
+        ///     the absolute path of the game, or <see langword="null"/> if not found,
+        ///     the game's folder doesn't exist, or it wasn't marked as fully installed, when required to be.
+        /// </returns>
+        public string? GetGamePathFromExactName(string gameName, bool shouldBeFullyInstalled = false)
         {
-            var steamLibraries = this.GetSteamLibraries();
+            // Will not update, if already updated once before
+            this.UpdateInstalledGames();
 
-            if (steamLibraries == null)
+            if (this.InstalledGames is null)
+                // User is broke or something
                 return null;
 
-            var allGames = new List<SteamGame>();
+            gameName = gameName.Trim();
 
-            foreach (var library in steamLibraries)
-            {
-                if (!library.DoesExist)
-                    continue;
+            var foundGame = this.InstalledGames.Where(game => game.Name is not null && game.Name.Trim().Equals(gameName, StringComparison.OrdinalIgnoreCase))
+                                                .FirstOrDefault();
 
-                List<string> manifestFiles = Directory.GetFiles(Path.Combine(library.Path!, "steamapps")).ToList().Where(f => this.isAppManifestFile(f)).ToList();
+            if (foundGame is null)
+                return null;
 
-                foreach (string manifestFile in manifestFiles)
-                {
-                    var manifestVDF = new VDFFile(manifestFile);
+            if (!foundGame.GameFolderExists)
+                return null;
 
-                    if (manifestVDF.RootElements.Count < 1)
-                        // App manifest might be still existent but the game might not be installed (happened during testing)
-                        continue;
+            if (shouldBeFullyInstalled
+                && (foundGame.GameState & (int)GameState.StateFullyInstalled) == 0)
+                return null;
 
-                    var root = manifestVDF["AppState"];
-
-                    if(root!["name"].Value!.Trim().ToLower() != gameName.Trim().ToLower())
-                    {
-                        // Not our wanted game, skip
-                        continue;
-                    }
-
-                    var currGame = new SteamGame();
-
-                    this.populateGameInfo(currGame, root);
-
-                    if ((currGame.GameState & (int)GameState.StateFullyInstalled) != 0)
-                    {
-                        // Game was fully installed according to steam
-                        return Path.Combine(library.Path!, "steamapps", "common", currGame.InstallFolderName!);
-                    }
-                }
-            }
-
-            return null;
+            // Match the name while ignoring leading and trailing whitespaces, as well as upper/lower case.
+            return foundGame.FullInstallPath;
         }
 
         /// <summary>
-        /// Gets the most recently logged in Steam user, based on the "MostRecent" value.
+        ///     Gets the most recently logged in Steam user, based on the "MostRecent" value.
         /// </summary>
         /// <returns>
-        /// The most recent logged in Steam user, or <see langword="null"/>, if none has been found or an error has occurred.
+        ///     the most recent logged in Steam user, or <see langword="null"/>, if none has been found or an error has occurred.
         /// </returns>
         public SteamUser? GetMostRecentSteamUser()
         {
-            string steamPath = this.SteamPath;
+            List<SteamUser>? steamUsers = this.GetSteamUsers();
 
-            if (steamPath == null) 
+            if (steamUsers == null)
                 return null;
 
+            // Gets the user that has logged in most recently.
+            // We do this instead of checking, which user has the "MostRecent" VDF property set to 1
+            SteamUser? mostRecentLoggedInSteamUser = steamUsers.OrderByDescending(user => user.LastLogin).FirstOrDefault();
+
+            return mostRecentLoggedInSteamUser;
+        }
+
+        /// <summary>
+        ///     Gets all Steam users from the loginusers.vdf file.
+        /// </summary>
+        /// <returns>
+        ///     a list of users, or <see langword="null"/>, if no users exist or there was an error.
+        /// </returns>
+        public List<SteamUser>? GetSteamUsers()
+        {
+            string? steamPath = this.SteamPath;
+
+            // SteamPath couldn't be fetched.
+            // This would break if Steam was installed to a different directory between fetching and using the steam path.
+            if (steamPath == null)
+                return null;
+
+            // The path that probably contains all users that have logged in since Steam was installed
             string usersFilePath = Path.Combine(steamPath, "config", "loginusers.vdf");
 
             if (!File.Exists(usersFilePath))
+                // Where file? 🦧
                 return null;
 
             VDFFile vdf = new VDFFile(usersFilePath);
@@ -265,44 +303,51 @@ namespace SteamShared
             if (users == null)
                 return null;
 
-            SteamUser? mostRecentUser = null;
+            List<SteamUser>? steamUsers = null;
 
+            // users may be empty here
             foreach (var user in users)
             {
-                if (int.TryParse(user["MostRecent"]?.Value, out int mostRecent) && Convert.ToBoolean(mostRecent))
+                // Create the list if we have at least one *potential* user
+                if (steamUsers == null)
+                    steamUsers = new List<SteamUser>();
+
+                var steamUser = new SteamUser();
+
+                // This is not the user name, but the name of the VDF element, which in this case should be the steam ID 64
+                if (ulong.TryParse(user.Name, out ulong steamID64))
                 {
-                    // We found a "most recent" user
-                    mostRecentUser = new SteamUser();
-
-                    if(ulong.TryParse(user.Name, out ulong steamID64))
-                    {
-                        mostRecentUser.SteamID64 = steamID64;
-                    }
-
-                    mostRecentUser.AccountName = user["AccountName"].Value;
-                    mostRecentUser.PersonaName = user["PersonaName"].Value;
-
-                    if (ulong.TryParse(user["Timestamp"].Value, out ulong lastLoginUnixTime))
-                    {
-                        mostRecentUser.LastLogin = lastLoginUnixTime;
-                    }
-
-                    mostRecentUser.AbsoluteUserdataFolderPath = Path.Combine(steamPath, "userdata", mostRecentUser.AccountID.ToString());
+                    steamUser.SteamID64 = steamID64;
                 }
+
+                steamUser.AccountName = user["AccountName"].Value;
+                steamUser.PersonaName = user["PersonaName"].Value;
+
+                // "MostRecent" can later be found by getting the largest Timestamp
+                if (ulong.TryParse(user["Timestamp"].Value, out ulong lastLoginUnixTime))
+                {
+                    steamUser.LastLogin = lastLoginUnixTime;
+                }
+
+                // The needed AccountID (Last part of the SteamId3) is calculated automatically from the SteamId64
+                steamUser.AbsoluteUserdataFolderPath = Path.Combine(steamPath, "userdata", steamUser.AccountID.ToString());
+
+                steamUsers.Add(steamUser);
             }
 
-            return mostRecentUser;
+            return steamUsers;
         }
 
         /// <summary>
-        /// Starts the given steam game, with the given additional arguments, if possible.
+        ///     Starts the given steam game, with the given additional arguments, if possible.
         /// </summary>
-        /// <param name="gameID">The ID of the game.</param>
-        /// <param name="arguments">
-        /// The arguments passed to that game.
-        /// Note, that the default arguments set by the user in the UI are also passed to the app, these are just additional.
+        /// <param name="gameID">The ID of the game (e.g. 730 for CS:GO/CS2).</param>
+        /// <param name="additionalArgs">
+        ///     The arguments passed to that game.
+        ///     Note, that the default arguments set by the user in the UI are also passed to the app,
+        ///     these are just additional to that.
         /// </param>
-        public void StartApp(int gameID, string arguments)
+        public void StartSteamApp(int gameID, string additionalArgs)
         {
             string? steamPath = this.SteamPath;
             this.UpdateInstalledGames(); // Won't force update, if already set
@@ -316,28 +361,66 @@ namespace SteamShared
             startInfo.UseShellExecute = false; // Make double sure
             startInfo.CreateNoWindow = false;
             startInfo.FileName = Path.Combine(steamPath, "steam.exe");
-            startInfo.Arguments = $"-applaunch {gameID}" + (String.IsNullOrWhiteSpace(arguments) ? string.Empty : $" {arguments}");
 
+            string extraArgs = String.IsNullOrWhiteSpace(additionalArgs) ? string.Empty : $" {additionalArgs}";
+
+            // The "-applaunch" argument will automatically add the args stored by the user. We add our own ones to that, if required.
+            startInfo.Arguments = $"-applaunch {gameID}" + extraArgs;
+
+            // Fire and forget!
             Process.Start(startInfo);
         }
 
         #region Private Methods
+        /// <summary>
+        ///     Checks, if the file at the given absolute path is considered an appmanifest, by the looks of it.
+        /// </summary>
+        /// <remarks>
+        ///     App manifest have the format "appmanifest_GAMEID.acf"
+        /// </remarks>
+        /// <param name="filePath">The absolute path of the app manifest (acf) file.</param>
+        /// <returns>
+        ///     whether the file name matches the app manifest description.
+        /// </returns>
         private bool isAppManifestFile(string filePath)
         {
-            return System.Text.RegularExpressions.Regex.IsMatch(filePath.Split(new[] { '\\', '/' }).Last(), "appmanifest_\\d+.acf"); ;
+            string[] splitFilePath = filePath.Split(new[] { '\\', '/' });
+            
+            if (splitFilePath.Length < 1)
+                // Doesn't seem to be a valid path
+                return false;
+
+            return System.Text.RegularExpressions.Regex.IsMatch(splitFilePath.Last(), "appmanifest_\\d+.acf"); ;
         }
 
-        private DateTime fromUnixFormat(long unixFormat)
+        /// <summary>
+        ///     Converts a unix time in seconds to a <see cref="DateTime"/> using the specified <see cref="DateTimeKind"/>.
+        /// </summary>
+        /// <param name="unixSeconds">The unix seconds.</param>
+        /// <param name="dateTimeKind">The type of time zone, UTC by default.</param>
+        /// <returns>
+        ///     the <see cref="DateTime"/> that was created from the given seconds.
+        /// </returns>
+        private DateTime fromUnixFormat(long unixSeconds, DateTimeKind dateTimeKind = DateTimeKind.Utc)
         {
-            DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Local);
-            return dateTime.AddSeconds(unixFormat);
+            DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, dateTimeKind);
+            return dateTime.AddSeconds(unixSeconds);
         }
 
-        private void populateGameInfo(SteamGame game, Element appStateVdf)
+        /// <summary>
+        ///     Takes a game object and populates it with the info from the app manifest file,
+        ///     which is specified by the given VDF element.
+        /// </summary>
+        /// <param name="game">The game to populate with info.</param>
+        /// <param name="appStateVdf">The app state VDF element, which contains the required information.</param>
+        /// <param name="steamLibraryPath">The absolute path to the steam library containing this game.</param>
+        private void populateGameInfo(SteamGame game, Element appStateVdf, string steamLibraryPath)
         {
             game.Name = appStateVdf["name"]?.Value;
 
+            // Setting these two properties enables the ability to fetch the FullInstallPath
             game.InstallFolderName = appStateVdf["installdir"]?.Value;
+            game.LinkedSteamLibraryPath = steamLibraryPath;
 
             if (int.TryParse(appStateVdf["appid"]?.Value, out int appId))
             {
@@ -351,7 +434,8 @@ namespace SteamShared
 
             if (long.TryParse(appStateVdf["LastUpdated"]?.Value, out long lastUpdated))
             {
-                game.LastUpdated = fromUnixFormat(lastUpdated);
+                // It's unix time, but the time is in the local time zone, and not in UTC.
+                game.LastUpdated = fromUnixFormat(lastUpdated, DateTimeKind.Local);
             }
 
             if (long.TryParse(appStateVdf["LastOwner"]?.Value, out long lastOwner))

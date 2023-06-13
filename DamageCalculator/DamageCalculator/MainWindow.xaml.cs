@@ -127,7 +127,7 @@ namespace Damage_Calculator
             InitializeComponent();
             Globals.LoadSettings();
 
-            SteamShared.Globals.Settings.CsgoHelper.CsgoPath = SteamShared.Globals.Settings.SteamHelper.GetGamePathFromExactName("Counter-Strike: Global Offensive");
+            SteamShared.Globals.Settings.CsgoHelper.CsgoPath = SteamShared.Globals.Settings.SteamHelper.GetGamePathFromExactName("Counter-Strike: Global Offensive", true);
             if (SteamShared.Globals.Settings.CsgoHelper.CsgoPath == null)
             {
                 ShowMessage.Error("Make sure you have installed CS:GO and Steam correctly.");
@@ -1843,7 +1843,7 @@ namespace Damage_Calculator
                 // CS:GO is not opened, just ask if the user wants to start it
                 if (MessageBox.Show("Do you want to start CS:GO now?", "Start CS:GO", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    SteamShared.Globals.Settings.SteamHelper.StartApp(SteamShared.CsgoHelper.GameID, additionalStartOptions);
+                    SteamShared.Globals.Settings.SteamHelper.StartSteamApp(SteamShared.CsgoHelper.GameID, additionalStartOptions);
                     ShowMessage.Info("CS:GO is currently attempting to start. Retry to connect when you're in-game.\n\nRetrying while on a map will load the corresponding map.");
                     return;
                 }
@@ -1866,7 +1866,7 @@ namespace Damage_Calculator
 
                         if (csgo.HasExited)
                         {
-                            SteamShared.Globals.Settings.SteamHelper.StartApp(SteamShared.CsgoHelper.GameID, additionalStartOptions);
+                            SteamShared.Globals.Settings.SteamHelper.StartSteamApp(SteamShared.CsgoHelper.GameID, additionalStartOptions);
 
                             ShowMessage.Info("CS:GO is currently attempting to restart. Retry to connect when you're in-game.\n\nRetrying while on a map will load the corresponding map.");
                             return;

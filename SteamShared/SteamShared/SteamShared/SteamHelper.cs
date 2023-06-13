@@ -147,13 +147,14 @@ namespace SteamShared
         /// <summary>
         ///     Updates the <see cref="InstalledGames">list of installed steam games</see>.
         /// </summary>
+        /// <param name="shouldBeFullyInstalled">Whether to only return games, if they're marked as fully installed.</param>
         /// <param name="force">Whether to fetch them again, even if they were fetched before.</param>
-        public void UpdateInstalledGames(bool force = false)
+        public void UpdateInstalledGames(bool shouldBeFullyInstalled = false, bool force = false)
         {
             if (!force && this.InstalledGames != null)
                 return;
 
-            this.InstalledGames = this.GetInstalledGames();
+            this.InstalledGames = this.GetInstalledGames(shouldBeFullyInstalled);
         }
 
         /// <summary>
@@ -165,11 +166,12 @@ namespace SteamShared
         ///     This means, that if the files are deleted manually, it might still be seen as installed,
         ///     because the manifest file might not change.
         /// </remarks>
+        /// <param name="shouldBeFullyInstalled">Whether to only return games, if they're marked as fully installed.</param>
         /// <returns>
         ///     a list of installed Steam games, with some manifest data,
         ///     or <see langword="null"/>, if no games could be fetched or found.
         /// </returns>
-        public List<SteamGame>? GetInstalledGames()
+        public List<SteamGame>? GetInstalledGames(bool shouldBeFullyInstalled = false)
         {
             // Get all steam library paths
             var steamLibraries = this.GetSteamLibraries();
@@ -206,9 +208,15 @@ namespace SteamShared
 
                     this.populateGameInfo(currGame, root, library.Path);
 
-                    if((currGame.GameState & (int)GameState.StateFullyInstalled) != 0)
+                    if(shouldBeFullyInstalled
+                        && (currGame.GameState & (int)GameState.StateFullyInstalled) != 0)
                     {
                         // Game was fully installed according to steam
+                        allGames.Add(currGame);
+                    }
+                    else if (!shouldBeFullyInstalled)
+                    {
+                        // Game doesn't need to be fully installed to be added
                         allGames.Add(currGame);
                     }
                 }
@@ -222,14 +230,15 @@ namespace SteamShared
         /// </summary>
         /// <param name="gameName">The name of the game. The case, as well as leading and trailing whitespaces don't matter.</param>
         /// <param name="shouldBeFullyInstalled">Whether to only return it, if it's marked as fully installed.</param>
+        /// <param name="folderShouldExist">Whether to only return it, if the folder it's installed in actually exists.</param>
         /// <returns>
         ///     the absolute path of the game, or <see langword="null"/> if not found,
         ///     the game's folder doesn't exist, or it wasn't marked as fully installed, when required to be.
         /// </returns>
-        public string? GetGamePathFromExactName(string gameName, bool shouldBeFullyInstalled = false)
+        public string? GetGamePathFromExactName(string gameName, bool shouldBeFullyInstalled = false, bool folderShouldExist = true)
         {
             // Will not update, if already updated once before
-            this.UpdateInstalledGames();
+            this.UpdateInstalledGames(shouldBeFullyInstalled);
 
             if (this.InstalledGames is null)
                 // User is broke or something
@@ -243,7 +252,7 @@ namespace SteamShared
             if (foundGame is null)
                 return null;
 
-            if (!foundGame.GameFolderExists)
+            if (folderShouldExist && !foundGame.GameFolderExists)
                 return null;
 
             if (shouldBeFullyInstalled

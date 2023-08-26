@@ -7,55 +7,22 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Management;
 using Pfim;
 using System.Drawing;
 
 namespace SteamShared
 {
+    /// <summary>
+    ///     A class that aids in getting information about CS:GO.
+    /// </summary>
     public class CsgoHelper
     {
-        public string? CsgoPath { get; set; }
-
-        public static readonly float DuckModifier = 0.34f;
-
-        public static readonly float WalkModifier = 0.52f;
-
-        public static readonly int GameID = 730;
-
         /// <summary>
-        ///     Gets the prefixes allowed for maps when using <see cref="GetMaps"/>.
+        ///     Empty constructor.
+        ///     Make sure the other constructor is called before using the object.
         /// </summary>
-        /// <remarks>
-        ///      If adjusted, <see cref="GetMaps"/> should also be adjusted to set the type.
-        /// </remarks>
-        private readonly string[] validMapPrefixes = new[]
-        {
-            "de",
-            "cs",
-            "dz",
-            "ar"
-        };
-
-        /// <summary>
-        ///     Gets the files relative to the CS:GO install path that are checked when <see cref="Validate(string)">validating</see>.
-        /// </summary>
-        private readonly string[] filesToValidate = new[]
-        {
-            "csgo\\scripts\\items\\items_game.txt" // Item info (weapon stats etc.)
-        };
-
-        /// <summary>
-        ///     Gets the directories relative to the CS:GO install path that are checked when <see cref="Validate(string)">validating</see>.
-        /// </summary>
-        private readonly string[] directoriesToValidate = new[]
-        {
-            "csgo\\resource\\overviews" // Map overviews
-        };
-
         public CsgoHelper()
         {
             // Nothing to do, don't use this ctor, aside from before the program initialises.
@@ -71,36 +38,17 @@ namespace SteamShared
         }
 
         /// <summary>
+        ///     The absolute path to the CS:GO root directory.
+        /// </summary>
+        public string? CsgoPath { get; set; }
+
+        /// <summary>
         ///     Validates files and directories for CS:GO installed in the <see cref="CsgoPath">path</see>.
         /// </summary>
         /// <returns>whether the files and directories exist.</returns>
         public bool Validate()
         {
-            return this.Validate(this.CsgoPath!);
-        }
-
-        /// <summary>
-        ///     Gets a handle to the currently running CS:GO instance.
-        /// </summary>
-        /// <returns>a tuple containing the process handle, as well as the arguments it was started with, either can be null.</returns>
-        public (Process?,string?) GetRunningCsgo()
-        {
-            // This is used as the normal process handle
-            Process? csgoProcess = Process.GetProcessesByName("csgo").FirstOrDefault(p => Globals.ComparePaths(p.MainModule?.FileName!, this.CsgoPath!));
-            
-            // And this is used for grabbing the command line arguments the process was started with
-            string? cmdLine = string.Empty;
-
-            var mgmtClass = new ManagementClass("Win32_Process");
-            foreach (ManagementObject o in mgmtClass.GetInstances())
-            {
-                if (o["Name"].Equals("csgo.exe"))
-                {
-                    cmdLine = o["CommandLine"].ToString();
-                }
-            }
-
-            return (csgoProcess, cmdLine);
+            return this.Validate(this.CsgoPath);
         }
 
         /// <summary>
@@ -112,8 +60,11 @@ namespace SteamShared
         /// </remarks>
         /// <param name="csgoPath">The path to the CS:GO install directory, in which the executable resides.</param>
         /// <returns>whether the files and directories exist.</returns>
-        public bool Validate(string csgoPath)
+        public bool Validate(string? csgoPath)
         {
+            if (csgoPath is null)
+                return false;
+
             foreach (string file in this.filesToValidate)
             {
                 if (!File.Exists(Path.Combine(csgoPath, file)))
@@ -127,6 +78,30 @@ namespace SteamShared
             }
 
             return true;
+        }
+
+        /// <summary>
+        ///     Gets a handle to the currently running CS:GO instance.
+        /// </summary>
+        /// <returns>a tuple containing the process handle, as well as the arguments it was started with, either can be null.</returns>
+        public (Process? processHandle, string? startArguments) GetRunningCsgo()
+        {
+            // This is used as the normal process handle
+            Process? csgoProcess = Process.GetProcessesByName("csgo").FirstOrDefault(p => Globals.ComparePaths(p.MainModule?.FileName!, this.CsgoPath!));
+
+            // And this is used for grabbing the command line arguments the process was started with
+            string? cmdLine = string.Empty;
+
+            var mgmtClass = new ManagementClass("Win32_Process");
+            foreach (ManagementObject o in mgmtClass.GetInstances())
+            {
+                if (o["Name"].Equals("csgo.exe"))
+                {
+                    cmdLine = o["CommandLine"].ToString();
+                }
+            }
+
+            return (csgoProcess, cmdLine);
         }
 
         /// <summary>
@@ -392,6 +367,97 @@ namespace SteamShared
         }
 
         /// <summary>
+        ///     Reads entity list from uncompressed BSP file.
+        /// </summary>
+        /// <param name="bspFilePath">The absolute path to the BSP file.</param>
+        /// <returns>the entity list, null if actual length differed from length specified in file, or a general error occurred.</returns>
+        public string? ReadEntityListFromBsp(string bspFilePath)
+        {
+            using (var bspFile = File.OpenRead(bspFilePath))
+            {
+                using (var reader = new BinaryReader(bspFile))
+                {
+                    reader.BaseStream.Position = 8; // Skip magic bytes and file version
+                    int offset = reader.ReadInt32(); // Lump data offset from beginning of file
+                    int length = reader.ReadInt32(); // Length of lump data
+
+                    reader.BaseStream.Position = offset;
+                    char[] chars = new char[length];
+                    int charsRead = reader.Read(chars, 0, length);
+
+                    if (charsRead == length)
+                    {
+                        // Everything was read
+                        return new string(chars);
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        ///     Reads packed files from a BSP and checks for NAV and AIN files.
+        /// </summary>
+        /// <param name="bspFilePath">The absolute path to the BSP file.</param>
+        /// <returns>a tuple containing whether NAV or AIN files were found, as well as the parsed NAV mesh.</returns>
+        public (bool navFilesFound, bool ainFilesFound, NavMesh? navMesh) ReadIfPackedNavFilesInBsp(string bspFilePath)
+        {
+            bool navFound = false;
+            bool ainFound = false;
+            byte[]? readZipBytes = null;
+
+            using (var bspFile = File.OpenRead(bspFilePath))
+            {
+                using (var reader = new BinaryReader(bspFile))
+                {
+                    // Skip stuff before (lumps + (pakfile index * lump array item length))
+                    reader.BaseStream.Position = 8 + (40 * 16);
+
+                    // Get lump pos and size
+                    int offset = reader.ReadInt32();
+                    int length = reader.ReadInt32();
+
+                    // Read zip file
+                    reader.BaseStream.Position = offset;
+                    readZipBytes = reader.ReadBytes(length);
+                }
+            }
+
+            if (readZipBytes == null)
+                return (false, false, null);
+
+            using var stream = new MemoryStream(readZipBytes);
+
+            // Packed files are contained in a ZIP file within the BSP file
+            using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
+
+            NavMesh? nav = null;
+            foreach (var entry in zip.Entries)
+            {
+                if (entry.FullName.ToLower().EndsWith(".nav"))
+                {
+                    // Found a packed NAV file
+                    navFound = true;
+                    nav = NavFile.Parse(entry.Open());
+                }
+                if (entry.FullName.ToLower().EndsWith(".ain"))
+                    // Found a packed AIN file
+                    ainFound = true;
+
+                if (navFound && ainFound)
+                {
+                    // If both are already found, return prematurely,
+                    // as we don't care how many there are
+                    return (navFound, ainFound, nav);
+                }
+            }
+
+            // We get here, if either no NAV or no AIN file has been found
+            // If navFound is null, nav will be null as well
+            return (navFound, ainFound, nav);
+        }
+
+        /// <summary>
         ///     Gets whether a given weapon can be fired (Hint: You can't shoot knives, at least not in the usual sense).
         /// </summary>
         /// <param name="weapon">The weapon to check.</param>
@@ -404,7 +470,7 @@ namespace SteamShared
             if (prefabTrace != null)
             {
                 // Stuff involving prefab trace here
-                if(prefabTrace.FirstOrDefault(pr => pr == "primary" || pr == "secondary") != null)
+                if (prefabTrace.FirstOrDefault(pr => pr == "primary" || pr == "secondary") != null)
                     // Allow any weapon in the primary or secondary slot
                     isWhitelisted = true;
             }
@@ -470,7 +536,7 @@ namespace SteamShared
             // =========================== ATTRIBUTES =========================== //
 
             // Base damage
-            if (weapon.BaseDamage == -1) 
+            if (weapon.BaseDamage == -1)
             {
                 string damage = attributes["damage"]?.Value!;
                 if (damage != null)
@@ -608,7 +674,7 @@ namespace SteamShared
         {
             string fileName = Path.GetFileName(mapPath.ToLower());
 
-            foreach(string prefix in this.validMapPrefixes)
+            foreach (string prefix in this.validMapPrefixes)
             {
                 if (fileName.StartsWith(prefix.ToLower()))
                     return true;
@@ -618,104 +684,13 @@ namespace SteamShared
         }
 
         /// <summary>
-        ///     Reads entity list from uncompressed BSP file.
-        /// </summary>
-        /// <param name="bspFilePath">The absolute path to the BSP file.</param>
-        /// <returns>the entity list, null if actual length differed from length specified in file, or a general error occurred.</returns>
-        public string? ReadEntityListFromBsp(string bspFilePath)
-        {
-            using(var bspFile = File.OpenRead(bspFilePath))
-            {
-                using(var reader = new BinaryReader(bspFile))
-                {
-                    reader.BaseStream.Position = 8; // Skip magic bytes and file version
-                    int offset = reader.ReadInt32(); // Lump data offset from beginning of file
-                    int length = reader.ReadInt32(); // Length of lump data
-
-                    reader.BaseStream.Position = offset;
-                    char[] chars = new char[length];
-                    int charsRead = reader.Read(chars, 0, length);
-
-                    if(charsRead == length)
-                    {
-                        // Everything was read
-                        return new string(chars);
-                    }
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        ///     Reads packed files from a BSP and checks for NAV and AIN files.
-        /// </summary>
-        /// <param name="bspFilePath">The absolute path to the BSP file.</param>
-        /// <returns>a tuple containing whether NAV or AIN files were found, as well as the parsed NAV mesh.</returns>
-        public (bool NavFilesFound, bool AinFilesFound, NavMesh? NavMesh) ReadIfPackedNavFilesInBsp(string bspFilePath)
-        {
-            bool navFound = false;
-            bool ainFound = false;
-            byte[]? readZipBytes = null;
-
-            using (var bspFile = File.OpenRead(bspFilePath))
-            {
-                using (var reader = new BinaryReader(bspFile))
-                {
-                    // Skip stuff before (lumps + (pakfile index * lump array item length))
-                    reader.BaseStream.Position = 8 + (40 * 16);
-
-                    // Get lump pos and size
-                    int offset = reader.ReadInt32();
-                    int length = reader.ReadInt32();
-
-                    // Read zip file
-                    reader.BaseStream.Position = offset;
-                    readZipBytes = reader.ReadBytes(length);
-                }
-            }
-
-            if (readZipBytes == null)
-                return (false, false, null);
-
-            using var stream = new MemoryStream(readZipBytes);
-
-            // Packed files are contained in a ZIP file within the BSP file
-            using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
-
-            NavMesh? nav = null;
-            foreach (var entry in zip.Entries)
-            {
-                if (entry.FullName.ToLower().EndsWith(".nav"))
-                {
-                    // Found a packed NAV file
-                    navFound = true;
-                    nav = NavFile.Parse(entry.Open());
-                }
-                if (entry.FullName.ToLower().EndsWith(".ain"))
-                    // Found a packed AIN file
-                    ainFound = true;
-
-                if (navFound && ainFound)
-                {
-                    // If both are already found, return prematurely,
-                    // as we don't care how many there are
-                    return (navFound, ainFound, nav);
-                }
-            }
-
-            // We get here, if either no NAV or no AIN file has been found
-            // If navFound is null, nav will be null as well
-            return (navFound, ainFound, nav);
-        }
-
-        /// <summary>
         ///     Checks whether a lump is unused (all zeroes).
         /// </summary>
         /// <param name="lump">The lump to check.</param>
         /// <returns>a bool indicating if the lump is unused.</returns>
         private bool isLumpUnused(byte[] lump)
         {
-            for(int i = 0; i < lump.Length; i++)
+            for (int i = 0; i < lump.Length; i++)
             {
                 if (lump[i] != 0)
                     return false;
@@ -723,5 +698,50 @@ namespace SteamShared
 
             return true;
         }
+
+        /// <summary>
+        ///     The multiplier for player movement speed while ducking.
+        /// </summary>
+        public static readonly float DuckModifier = 0.34f;
+
+        /// <summary>
+        ///     The multiplier for player movement speed while shifting.
+        /// </summary>
+        public static readonly float WalkModifier = 0.52f;
+
+        /// <summary>
+        ///     The Steam game ID of CS:GO.
+        /// </summary>
+        public static readonly int GameID = 730;
+
+        /// <summary>
+        ///     Gets the prefixes allowed for maps when using <see cref="GetMaps"/>.
+        /// </summary>
+        /// <remarks>
+        ///      If adjusted, <see cref="GetMaps"/> should also be adjusted to set the type.
+        /// </remarks>
+        private readonly string[] validMapPrefixes = new[]
+        {
+            "de",
+            "cs",
+            "dz",
+            "ar"
+        };
+
+        /// <summary>
+        ///     Gets the files relative to the CS:GO install path that are checked when <see cref="Validate(string)">validating</see>.
+        /// </summary>
+        private readonly string[] filesToValidate = new[]
+        {
+            "csgo\\scripts\\items\\items_game.txt" // Item info (weapon stats etc.)
+        };
+
+        /// <summary>
+        ///     Gets the directories relative to the CS:GO install path that are checked when <see cref="Validate(string)">validating</see>.
+        /// </summary>
+        private readonly string[] directoriesToValidate = new[]
+        {
+            "csgo\\resource\\overviews" // Map overviews
+        };
     }
 }

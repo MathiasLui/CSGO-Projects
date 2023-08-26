@@ -27,8 +27,11 @@ namespace SteamShared
         public static readonly int GameID = 730;
 
         /// <summary>
-        /// Gets the prefixes allowed for maps when using <see cref="GetMaps"/>.
+        ///     Gets the prefixes allowed for maps when using <see cref="GetMaps"/>.
         /// </summary>
+        /// <remarks>
+        ///      If adjusted, <see cref="GetMaps"/> should also be adjusted to set the type.
+        /// </remarks>
         private readonly string[] validMapPrefixes = new[]
         {
             "de",
@@ -38,7 +41,7 @@ namespace SteamShared
         };
 
         /// <summary>
-        /// Gets the files relative to the CS:GO install path that are checked when <see cref="Validate(string)">validating</see>.
+        ///     Gets the files relative to the CS:GO install path that are checked when <see cref="Validate(string)">validating</see>.
         /// </summary>
         private readonly string[] filesToValidate = new[]
         {
@@ -46,7 +49,7 @@ namespace SteamShared
         };
 
         /// <summary>
-        /// Gets the directories relative to the CS:GO install path that are checked when <see cref="Validate(string)">validating</see>.
+        ///     Gets the directories relative to the CS:GO install path that are checked when <see cref="Validate(string)">validating</see>.
         /// </summary>
         private readonly string[] directoriesToValidate = new[]
         {
@@ -58,13 +61,17 @@ namespace SteamShared
             // Nothing to do, don't use this ctor, aside from before the program initialises.
         }
 
+        /// <summary>
+        ///     Creates a new instance.
+        /// </summary>
+        /// <param name="csgoPath">the root path where CS:GO is installed.</param>
         public CsgoHelper(string csgoPath)
         {
             this.CsgoPath = csgoPath;
         }
 
         /// <summary>
-        /// Validates files and directories for CS:GO installed in the <see cref="CsgoPath">path</see>.
+        ///     Validates files and directories for CS:GO installed in the <see cref="CsgoPath">path</see>.
         /// </summary>
         /// <returns>whether the files and directories exist.</returns>
         public bool Validate()
@@ -72,6 +79,10 @@ namespace SteamShared
             return this.Validate(this.CsgoPath!);
         }
 
+        /// <summary>
+        ///     Gets a handle to the currently running CS:GO instance.
+        /// </summary>
+        /// <returns>a tuple containing the process handle, as well as the arguments it was started with, either can be null.</returns>
         public (Process?,string?) GetRunningCsgo()
         {
             // This is used as the normal process handle
@@ -93,8 +104,12 @@ namespace SteamShared
         }
 
         /// <summary>
-        /// Validates files and directories for CS:GO installed in the given path.
+        ///     Validates files and directories for CS:GO installed in the given path.
         /// </summary>
+        /// <remarks>
+        ///     Directories and files that are checked for
+        ///     are specified in <see cref="filesToValidate"/> and <see cref="directoriesToValidate"/>.
+        /// </remarks>
         /// <param name="csgoPath">The path to the CS:GO install directory, in which the executable resides.</param>
         /// <returns>whether the files and directories exist.</returns>
         public bool Validate(string csgoPath)
@@ -114,16 +129,28 @@ namespace SteamShared
             return true;
         }
 
+        /// <summary>
+        ///     Gets all maps and tries to fill all the information it can find about it.
+        /// </summary>
+        /// <remarks>
+        ///     Note that <see cref="CsgoPath"/> can't be null for this.
+        /// </remarks>
+        /// <returns>a list of all CS:GO maps.</returns>
         public List<CsgoMap> GetMaps()
         {
-            string mapOverviewsPath = System.IO.Path.Combine(this.CsgoPath!, "csgo", "resource", "overviews");
-            if (!Directory.Exists(mapOverviewsPath))
-                return new List<CsgoMap>();
+            if (this.CsgoPath is null)
+                return new();
 
+            string mapOverviewsPath = System.IO.Path.Combine(this.CsgoPath, "csgo", "resource", "overviews");
+
+            if (!Directory.Exists(mapOverviewsPath))
+                return new();
+
+            // Get list of all map text files which have a map type that is allowed
             List<string> mapTextFiles = Directory.GetFiles(mapOverviewsPath).ToList().Where(f => f.ToLower().EndsWith(".txt")).Where(f =>
                 this.mapFileNameValid(f)).ToList();
 
-            List<CsgoMap> maps = new List<CsgoMap>();
+            List<CsgoMap> maps = new();
 
             foreach (string file in mapTextFiles)
             {
@@ -133,6 +160,7 @@ namespace SteamShared
                 string potentialRadarFile = System.IO.Path.Combine(this.CsgoPath!, "csgo\\resource\\overviews", System.IO.Path.GetFileNameWithoutExtension(file) + "_radar.dds");
                 if (File.Exists(potentialRadarFile))
                 {
+                    // Radar file exists, set it (radar image visible on minimap)
                     map.MapImagePath = potentialRadarFile;
                 }
 
@@ -140,6 +168,7 @@ namespace SteamShared
                 string potentialBspFile = System.IO.Path.Combine(this.CsgoPath!, "csgo\\maps", System.IO.Path.GetFileNameWithoutExtension(file) + ".bsp");
                 if (File.Exists(potentialBspFile))
                 {
+                    // Map file exists, set it (actual compiled map file)
                     map.BspFilePath = potentialBspFile;
                 }
 
@@ -147,6 +176,7 @@ namespace SteamShared
                 string potentialNavFile = System.IO.Path.Combine(this.CsgoPath!, "csgo\\maps", System.IO.Path.GetFileNameWithoutExtension(file) + ".nav");
                 if (File.Exists(potentialNavFile))
                 {
+                    // NAV file exists, set it (bot navigation mesh file used for calculating movement routes)
                     map.NavFilePath = potentialNavFile;
                 }
 
@@ -154,10 +184,11 @@ namespace SteamShared
                 string potentialAinFile = System.IO.Path.Combine(this.CsgoPath!, "csgo\\maps\\graphs", System.IO.Path.GetFileNameWithoutExtension(file) + ".ain");
                 if (File.Exists(potentialAinFile))
                 {
+                    // AIN file exists, set it (similar to NAV file, probably for older games for NPCs, probably not very important)
                     map.AinFilePath = potentialAinFile;
                 }
 
-                // Set map type
+                // Set map type (if adjusted, validMapPrefixes should also be adjusted)
                 switch (System.IO.Path.GetFileNameWithoutExtension(file).Split('_').First().ToLower())
                 {
                     case "de":
@@ -177,7 +208,7 @@ namespace SteamShared
                         break;
                 }
 
-                // Get properties from accompanying text file
+                // Get properties from accompanying text file (could be made prettier)
                 var vdf = new VDFFile(file);
                 if (vdf.RootElements.Count > 0)
                 {
@@ -228,7 +259,7 @@ namespace SteamShared
                     }
                 }
 
-                // Save map name without prefix
+                // Save map name without prefix (e.g. de_dust2 is dust2)
                 map.MapFileName = System.IO.Path.GetFileNameWithoutExtension(file).Split('_').Last();
 
                 Bitmap image;
@@ -259,7 +290,9 @@ namespace SteamShared
                     continue;
 
                 // Some workaround I found online for some thread error I forgot
-                // Future self: We probably want to execute it on the thread that owns the image
+                // @Future self: We probably want to execute it on the thread that owns the image
+                // 
+                // Hey, future self here, we just make sure that the code is invoked on the UI thread, to access the map object
                 System.Windows.Application.Current.Dispatcher.Invoke((Action)delegate
                 {
                     map.MapImage = Globals.BitmapToImageSource(image);
@@ -272,12 +305,12 @@ namespace SteamShared
         }
 
         /// <summary>
-        /// Gets the launch options of the specified Steam user.
+        ///     Gets the launch options of the specified Steam user.
         /// </summary>
         /// <param name="user">The Steam user of which to get the launch options.</param>
         /// <returns>
-        /// The launch options, 
-        /// or null if an error occurred, or if the passed <see cref="SteamUser.AbsoluteUserdataFolderPath"/> was wrong or <see langword="null"/>
+        ///     the launch options, 
+        ///     or null if an error occurred, or if the passed <see cref="SteamUser.AbsoluteUserdataFolderPath"/> was <see langword="null"/> or wrong.
         /// </returns>
         public string? GetLaunchOptions(SteamUser user)
         {
@@ -300,19 +333,24 @@ namespace SteamShared
             return Regex.Replace(launchOptions, "\\\\(.)", "$1");
         }
 
-        public List<CsgoWeapon> GetWeapons()
+        /// <summary>
+        ///     Gets a list of all fireable weapons, including their stats.
+        /// </summary>
+        /// <returns>the list of weapons, or <see langword="null"/> if something went wrong.</returns>
+        public List<CsgoWeapon>? GetWeapons()
         {
             string filePath = Path.Combine(this.CsgoPath!, "csgo\\scripts\\items\\items_game.txt");
+
             if (!File.Exists(filePath))
-                return null!;
+                return null;
 
             var vdfItems = new VDFFile(filePath);
             Element prefabs = vdfItems["items_game"]?["prefabs"]!;
             Element items = vdfItems["items_game"]?["items"]!;
 
-            if (prefabs == null || items == null)
+            if (prefabs is null || items is null)
                 // There is no prefab list or item list to read out
-                return null!;
+                return null;
 
             var weapons = new List<CsgoWeapon>();
 
@@ -321,10 +359,13 @@ namespace SteamShared
                 string? itemPrefab = item["prefab"]?.Value!;
                 string? itemName = item["name"].Value;
 
-                if (itemPrefab == null || !itemName!.StartsWith("weapon_"))
+                if (itemPrefab is null || itemName is null
+                    || !itemName.StartsWith("weapon_"))
+                {
                     continue;
+                }
 
-                // Here we're sure the item is supposed to be a weapon
+                // At this point we're sure the item is supposed to be a weapon
 
                 var weapon = new CsgoWeapon();
                 weapon.ClassName = itemName;
@@ -350,11 +391,17 @@ namespace SteamShared
             return weapons;
         }
 
+        /// <summary>
+        ///     Gets whether a given weapon can be fired (Hint: You can't shoot knives, at least not in the usual sense).
+        /// </summary>
+        /// <param name="weapon">The weapon to check.</param>
+        /// <param name="prefabTrace">The prefab trace (like a callstack of prefabs getting more and more abstract).</param>
+        /// <returns>whether the weapon is fireable.</returns>
         private bool isWeaponFireable(CsgoWeapon weapon, List<string>? prefabTrace)
         {
             bool isWhitelisted = false;
 
-            if(prefabTrace != null)
+            if (prefabTrace != null)
             {
                 // Stuff involving prefab trace here
                 if(prefabTrace.FirstOrDefault(pr => pr == "primary" || pr == "secondary") != null)
@@ -363,14 +410,34 @@ namespace SteamShared
             }
 
             // Other
-            if(weapon.ClassName == "weapon_taser")
+            if (weapon.ClassName == "weapon_taser")
                 // Allow zeus, even though it's "equipment" and listed in the melee slot
                 isWhitelisted = true;
 
             return isWhitelisted;
         }
 
-        private bool tryPopulateWeapon(CsgoWeapon weapon, Element prefabs, string prefabName, List<string>? prefabTrace = null)
+        /// <inheritdoc cref="tryPopulateWeapon(CsgoWeapon, Element, string, List{string}?)"/>
+        private bool tryPopulateWeapon(CsgoWeapon weapon, Element prefabs, string prefabName)
+        {
+            return tryPopulateWeapon(weapon, prefabs, prefabName, null);
+        }
+
+        /// <summary>
+        ///     Tries to populate a weapon with in-game stats.
+        /// </summary>
+        /// <param name="weapon">The weapon to be populated.</param>
+        /// <param name="prefabs">All prefabs that exist.</param>
+        /// <param name="prefabName">The name of the next (more abstract) prefab to check.</param>
+        /// <param name="prefabTrace">
+        ///     This parameter has to be <see langword="null"/> and will be set by the function itself recursively.
+        ///     Always use <see cref="tryPopulateWeapon(CsgoWeapon, Element, string)"/> instead.
+        /// </param>
+        /// <returns>
+        ///     <see langword="true"/>, if all information could be gathered or we have reached a wall,
+        ///     <see langword="false"/>, if the item is no weapon, or the weapon is not fireable, and its stats shouldn't be used (e.g. knives).
+        /// </returns>
+        private bool tryPopulateWeapon(CsgoWeapon weapon, Element prefabs, string prefabName, List<string>? prefabTrace)
         {
             // Get the initial prefab specified in the item
             Element prefab = prefabs[prefabName];
@@ -395,7 +462,7 @@ namespace SteamShared
 
             Element attributes = prefab["attributes"];
 
-            if (attributes == null && nextPrefab != null)
+            if (attributes is null && nextPrefab is not null)
                 // it might have no attributes but just skip to the next prefab in that case, because they might have attributes
                 // one example of this is the taser (zeus)
                 return this.tryPopulateWeapon(weapon, prefabs, nextPrefab, prefabTrace);
@@ -524,11 +591,19 @@ namespace SteamShared
             if (prefabTrace == null)
                 prefabTrace = new List<string>();
 
-            prefabTrace.Add(prefab.Name!);
+            prefabTrace.Add(prefab.Name ?? "unknown prefab name");
 
             return this.tryPopulateWeapon(weapon, prefabs, nextPrefab, prefabTrace);
         }
 
+        /// <summary>
+        ///     Checks whether the file name of map at the specified path is valid.
+        /// </summary>
+        /// <remarks>
+        ///     It's seen as valid, if the prefix is contained in <see cref="validMapPrefixes"/>.
+        /// </remarks>
+        /// <param name="mapPath">The map path to be checked.</param>
+        /// <returns>whether the map type is valid.</returns>
         private bool mapFileNameValid(string mapPath)
         {
             string fileName = Path.GetFileName(mapPath.ToLower());
@@ -543,11 +618,11 @@ namespace SteamShared
         }
 
         /// <summary>
-        /// Reads entity list from uncompressed BSP file.
+        ///     Reads entity list from uncompressed BSP file.
         /// </summary>
         /// <param name="bspFilePath">The absolute path to the BSP file.</param>
         /// <returns>the entity list, null if actual length differed from length specified in file, or a general error occurred.</returns>
-        public string ReadEntityListFromBsp(string bspFilePath)
+        public string? ReadEntityListFromBsp(string bspFilePath)
         {
             using(var bspFile = File.OpenRead(bspFilePath))
             {
@@ -568,25 +643,25 @@ namespace SteamShared
                     }
                 }
             }
-            return null!;
+            return null;
         }
 
         /// <summary>
-        /// Reads packed files from a BSP and returns whether any 1. NAV or 2. AIN files were found.
+        ///     Reads packed files from a BSP and checks for NAV and AIN files.
         /// </summary>
         /// <param name="bspFilePath">The absolute path to the BSP file.</param>
-        /// <returns>A tuple containing whether nav or ain files were found, in that order.</returns>
-        public (bool, bool, NavMesh) ReadIfPackedNavFilesInBsp(string bspFilePath)
+        /// <returns>a tuple containing whether NAV or AIN files were found, as well as the parsed NAV mesh.</returns>
+        public (bool NavFilesFound, bool AinFilesFound, NavMesh? NavMesh) ReadIfPackedNavFilesInBsp(string bspFilePath)
         {
             bool navFound = false;
             bool ainFound = false;
-            byte[] readZipBytes = null!;
+            byte[]? readZipBytes = null;
 
             using (var bspFile = File.OpenRead(bspFilePath))
             {
                 using (var reader = new BinaryReader(bspFile))
                 {
-                    // Stuff before lumps + pakfile index * lump array item length
+                    // Skip stuff before (lumps + (pakfile index * lump array item length))
                     reader.BaseStream.Position = 8 + (40 * 16);
 
                     // Get lump pos and size
@@ -600,34 +675,44 @@ namespace SteamShared
             }
 
             if (readZipBytes == null)
-                return (false, false, null!);
+                return (false, false, null);
 
-            using (var stream = new MemoryStream(readZipBytes))
+            using var stream = new MemoryStream(readZipBytes);
+
+            // Packed files are contained in a ZIP file within the BSP file
+            using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
+
+            NavMesh? nav = null;
+            foreach (var entry in zip.Entries)
             {
-                using(var zip = new ZipArchive(stream, ZipArchiveMode.Read))
+                if (entry.FullName.ToLower().EndsWith(".nav"))
                 {
-                    NavMesh? nav = null;
-                    foreach (var entry in zip.Entries)
-                    {
-                        if (entry.FullName.EndsWith(".nav"))
-                        {
-                            // Found a packed NAV file
-                            navFound = true;
-                            nav = NavFile.Parse(entry.Open());
-                        }
-                        if(entry.FullName.EndsWith(".ain"))
-                            // Found a packed AIN file
-                            ainFound = true;
+                    // Found a packed NAV file
+                    navFound = true;
+                    nav = NavFile.Parse(entry.Open());
+                }
+                if (entry.FullName.ToLower().EndsWith(".ain"))
+                    // Found a packed AIN file
+                    ainFound = true;
 
-                        if (navFound && ainFound)
-                            // If both already found, return prematurely
-                            return (true, true, nav!);
-                    }
-                    return (navFound, ainFound, nav!);
+                if (navFound && ainFound)
+                {
+                    // If both are already found, return prematurely,
+                    // as we don't care how many there are
+                    return (navFound, ainFound, nav);
                 }
             }
+
+            // We get here, if either no NAV or no AIN file has been found
+            // If navFound is null, nav will be null as well
+            return (navFound, ainFound, nav);
         }
 
+        /// <summary>
+        ///     Checks whether a lump is unused (all zeroes).
+        /// </summary>
+        /// <param name="lump">The lump to check.</param>
+        /// <returns>a bool indicating if the lump is unused.</returns>
         private bool isLumpUnused(byte[] lump)
         {
             for(int i = 0; i < lump.Length; i++)
@@ -635,6 +720,7 @@ namespace SteamShared
                 if (lump[i] != 0)
                     return false;
             }
+
             return true;
         }
     }

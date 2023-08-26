@@ -115,7 +115,7 @@ namespace SteamShared
                 return null;
             }
 
-            foreach (string foundLib in foundSteamLibraries!)
+            foreach (string foundLib in foundSteamLibraries)
             {
                 // All paths in the file are escaped
                 allLibraries.Add(new SteamLibrary(foundLib.Replace("\\\\", "\\")));
